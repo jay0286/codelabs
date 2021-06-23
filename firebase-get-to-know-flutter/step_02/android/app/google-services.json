@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "242114842517",
+    "firebase_url": "https://uzbrainsafehelmet-default-rtdb.firebaseio.com",
+    "project_id": "uzbrainsafehelmet",
+    "storage_bucket": "uzbrainsafehelmet.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:242114842517:android:200f41673774693aaaf09c",
+        "android_client_info": {
+          "package_name": "com.uzbrainnet.helmet_flutter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "242114842517-s7mb2hddf54i4u4fq048dll98nd76l24.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzpRn0xMieeXg-67oUzNwijYY9hioKI10"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "242114842517-s7mb2hddf54i4u4fq048dll98nd76l24.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

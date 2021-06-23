@@ -1,4 +1,4 @@
-package com.example.gtk_flutter
+package com.uzbrainnet.helmet_flutter
 
 import io.flutter.embedding.android.FlutterActivity
 
