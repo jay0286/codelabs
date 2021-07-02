@@ -88,12 +88,15 @@ class ScanResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+   // if(!result.advertisementData.localName.contains('Smart Helmet'))
+   //   return false;
+   // else
     return ExpansionTile(
       title: _buildTitle(context),
       leading: Text(result.rssi.toString()),
       trailing: RaisedButton(
-        child: Text('CONNECT'),
-        color: Colors.black,
+        child: Text('연결'),
+        color: Colors.deepPurple,
         textColor: Colors.white,
         onPressed: (result.advertisementData.connectable) ? onTap : null,
       ),

@@ -55,7 +55,8 @@ class Authentication extends StatelessWidget {
                 onPressed: () {
                   startLoginFlow();
                 },
-                child: const Text('RSVP'),
+                child: const Text('작업 시작 하기'),
+                //child: const Text('관리 시작 하기'),
               ),
             ),
           ],
@@ -63,13 +64,13 @@ class Authentication extends StatelessWidget {
       case ApplicationLoginState.emailAddress:
         return EmailForm(
             callback: (email) => verifyEmail(
-                email, (e) => _showErrorDialog(context, 'Invalid email', e)));
+                email, (e) => _showErrorDialog(context, '메일 형식을 확인하세요', e)));
       case ApplicationLoginState.password:
         return PasswordForm(
           email: email!,
           login: (email, password) {
             signInWithEmailAndPassword(email, password,
-                (e) => _showErrorDialog(context, 'Failed to sign in', e));
+                (e) => _showErrorDialog(context, '로그인 실패', e));
           },
         );
       case ApplicationLoginState.register:
@@ -88,7 +89,7 @@ class Authentication extends StatelessWidget {
                 displayName,
                 password,
                 (e) =>
-                    _showErrorDialog(context, 'Failed to create account', e));
+                    _showErrorDialog(context, '메일 계정 생성 실패', e));
           },
         );
       case ApplicationLoginState.loggedIn:
@@ -100,7 +101,7 @@ class Authentication extends StatelessWidget {
                 onPressed: () {
                   signOut();
                 },
-                child: const Text('LOGOUT'),
+                child: const Text('로그아웃'),
               ),
             ),
           ],
@@ -108,7 +109,7 @@ class Authentication extends StatelessWidget {
       default:
         return Row(
           children: const [
-            Text("Internal error, this shouldn't happen..."),
+            Text("에러가 발생했습니다, this shouldn't happen..."),
           ],
         );
     }
@@ -165,7 +166,7 @@ class _EmailFormState extends State<EmailForm> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Header('Sign in with email'),
+        const Header('메일 어드레스 가입/로그인'),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: Form(
@@ -178,11 +179,11 @@ class _EmailFormState extends State<EmailForm> {
                   child: TextFormField(
                     controller: _controller,
                     decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+                      hintText: '메일 주소를 입력하세요',
                     ),
                     validator: (value) {
                       if (value!.isEmpty) {
-                        return 'Enter your email address to continue';
+                        return '메일 주소를 입력하고 다음 버튼을 누르세요';
                       }
                       return null;
                     },
@@ -200,7 +201,7 @@ class _EmailFormState extends State<EmailForm> {
                             widget.callback(_controller.text);
                           }
                         },
-                        child: const Text('NEXT'),
+                        child: const Text('다음'),
                       ),
                     ),
                   ],
@@ -244,7 +245,7 @@ class _RegisterFormState extends State<RegisterForm> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Header('Create account'),
+        const Header('계정 생성하기'),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: Form(
@@ -257,11 +258,11 @@ class _RegisterFormState extends State<RegisterForm> {
                   child: TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+                      hintText: '메일 주소를 입력해 주세요',
                     ),
                     validator: (value) {
                       if (value!.isEmpty) {
-                        return 'Enter your email address to continue';
+                        return '메일 주소를 입력하고, 다음을 눌러주세요';
                       }
                       return null;
                     },
@@ -272,11 +273,11 @@ class _RegisterFormState extends State<RegisterForm> {
                   child: TextFormField(
                     controller: _displayNameController,
                     decoration: const InputDecoration(
-                      hintText: 'First & last name',
+                      hintText: '성명을 넣어주세요',
                     ),
                     validator: (value) {
                       if (value!.isEmpty) {
-                        return 'Enter your account name';
+                        return '성명을 입력해 주세요';
                       }
                       return null;
                     },
@@ -287,12 +288,12 @@ class _RegisterFormState extends State<RegisterForm> {
                   child: TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
-                      hintText: 'Password',
+                      hintText: '암호',
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value!.isEmpty) {
-                        return 'Enter your password';
+                        return '암호를 입력해 주세요';
                       }
                       return null;
                     },
@@ -305,7 +306,7 @@ class _RegisterFormState extends State<RegisterForm> {
                     children: [
                       TextButton(
                         onPressed: widget.cancel,
-                        child: const Text('CANCEL'),
+                        child: const Text('취소'),
                       ),
                       const SizedBox(width: 16),
                       StyledButton(
@@ -318,7 +319,7 @@ class _RegisterFormState extends State<RegisterForm> {
                             );
                           }
                         },
-                        child: const Text('SAVE'),
+                        child: const Text('저장'),
                       ),
                       const SizedBox(width: 30),
                     ],
@@ -359,7 +360,7 @@ class _PasswordFormState extends State<PasswordForm> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Header('Sign in'),
+        const Header('로그인'),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: Form(
@@ -372,11 +373,11 @@ class _PasswordFormState extends State<PasswordForm> {
                   child: TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+                      hintText: '메일 주소를 입력해 주세요',
                     ),
                     validator: (value) {
                       if (value!.isEmpty) {
-                        return 'Enter your email address to continue';
+                        return '메일 주소를 입력하고, 다음을 눌러 계속해 주세요';
                       }
                       return null;
                     },
@@ -387,12 +388,12 @@ class _PasswordFormState extends State<PasswordForm> {
                   child: TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
-                      hintText: 'Password',
+                      hintText: '암호',
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value!.isEmpty) {
-                        return 'Enter your password';
+                        return '암호를 입력해 주세요';
                       }
                       return null;
                     },
@@ -413,7 +414,7 @@ class _PasswordFormState extends State<PasswordForm> {
                             );
                           }
                         },
-                        child: const Text('SIGN IN'),
+                        child: const Text('로그인'),
                       ),
                       const SizedBox(width: 30),
                     ],
