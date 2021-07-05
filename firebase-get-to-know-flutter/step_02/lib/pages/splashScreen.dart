@@ -53,13 +53,11 @@ class _SplashScreenState extends State<SplashScreen> {
                  width: 100.0,
                  fit: BoxFit.fitWidth,
               ),
+              heightSpace,
               Text(
-                '스마트안전',
+                '스마트안전모',
                 style: listItemTitleStyle,
               ),
-              heightSpace,
-              heightSpace,
-              heightSpace,
               heightSpace,
               heightSpace,
               SpinKitPulse(

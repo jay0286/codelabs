@@ -39,6 +39,9 @@ import 'package:map/map.dart';
 import 'package:latlng/latlng.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:drag_and_drop_lists/drag_and_drop_lists.dart';
+//import 'package:page_transition/page_transition.dart';
+
 class Profile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -310,6 +313,8 @@ class Profile extends StatelessWidget {
 }
 
 bool logState = false;
+
+String? logEmail ;
 String? displayName = '무명';
 String? displayEmail = '없음';
 String? displayPhoneNumber = '없음';
@@ -744,13 +749,13 @@ class MyApp2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MyStore Delivery Boy',
+      debugShowCheckedModeBanner: false,
+      title: 'Smart Helmet',
       theme: ThemeData(
         primarySwatch: Colors.red,
         primaryColor: primaryColor,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      debugShowCheckedModeBanner: false,
       home: SplashScreen(),
     );
   }
@@ -1038,7 +1043,8 @@ class _GuestBookState extends State<GuestBook> {
               : ListView.builder(
             scrollDirection: Axis.vertical,
             shrinkWrap: true,
-            itemCount: (widget.logcount==null)?widget.messages.length:widget.logcount,
+            itemCount: (widget.logcount==null)? widget.messages.length
+                :widget.logcount,
             physics: BouncingScrollPhysics(),
             itemBuilder: (context, index) {
               final item = widget.messages[index];
@@ -1267,11 +1273,55 @@ class _GuestBookState extends State<GuestBook> {
 }
 
 
+final scaffoldKey = GlobalKey<ScaffoldState>();
+
+int _attendees = 0;
+int get attendees => _attendees;
+
+
+int _attendeesim = 0;
+int get attendeesim => _attendeesim;
+
+
+int _attendeesem = 0;
+int get attendeesem => _attendeesem;
+
+
+int _attendeesff = 0;
+int get attendeesff => _attendeesff;
+
+
+int _attendeesbelt = 0;
+int get attendeesbelt => _attendeesbelt;
+
+int _attendeesia = 0;
+int get attendeesia => _attendeesia;
+
+int _attendeesetc = 0;
+int get attendeesetc => _attendeesetc;
+
+
+int _attendeesall = 0;
+int get attendeesall => _attendeesall;
+
+
 class ApplicationState extends ChangeNotifier {
   ApplicationState() {
     init();
   }
 
+  SnackBar basicSnackBar(String message) {
+
+    return SnackBar(
+      duration: Duration(seconds: 2),
+      content: Text(message),
+      action: SnackBarAction(
+        label: "닫기",
+        textColor: Colors.white,
+        onPressed: () {},
+      ),
+    );
+  }
   Future<void> init() async {
     await Firebase.initializeApp();
 
@@ -1298,32 +1348,146 @@ class ApplicationState extends ChangeNotifier {
         logState = true;
         _loginState = ApplicationLoginState.loggedIn;
         // Add from here
-        _guestBookSubscription = FirebaseFirestore.instance
-            .collection('guestbook')
-           // .where('userId',isEqualTo:user.uid) //jay user
-            .orderBy('timestamp', descending: true)
-            .snapshots()
-            .listen((snapshot) {
-          _guestBookMessages = [];
-          snapshot.docs.forEach((document) {
-            if (document.data()['userId'] == user.uid) {
-              var date = DateTime.fromMillisecondsSinceEpoch(
-                document.data()['timestamp']);
-              var formattedDate = DateFormat('MM월dd일 HH시mm분').format(date);
-              _guestBookMessages.add(
-                GuestBookMessage(
-                    name: document.data()['name'],
-                    message: document.data()['text'],
-                    timestamp: formattedDate,
-                    location: document.data()['latitude'].toString() + ', ' +
-                        document.data()['longitude'].toString()
-                ),
+
+        logEmail =user.email;
+        if(logEmail=='jay@tinkerbox.kr')
+          {
+            FirebaseFirestore.instance
+                .collection('guestbook')
+                .where('text',isEqualTo:'무활동반응') //jay user
+                .snapshots()
+                .listen((snapshot) {
+                print('무활동반응');
+                print(snapshot.docs.length);
+              _attendeesia = snapshot.docs.length;
+              notifyListeners();
+            });
+            FirebaseFirestore.instance
+                .collection('guestbook')
+                .where('text',isEqualTo:'위급상황') //jay user
+                .snapshots()
+                .listen((snapshot) {
+              print('위급상황');
+              print(snapshot.docs.length);
+              _attendeesem = snapshot.docs.length;
+              notifyListeners();
+            });
+
+            FirebaseFirestore.instance
+                .collection('guestbook')
+                .where('text',isEqualTo:'낙하사고') //jay user
+                .snapshots()
+                .listen((snapshot) {
+              print('낙하사고');
+              print(snapshot.docs.length);
+              _attendeesff = snapshot.docs.length;
+              notifyListeners();
+            });
+
+            FirebaseFirestore.instance
+                .collection('guestbook')
+                .where('text',isEqualTo:'충격사고') //jay user
+                .snapshots()
+                .listen((snapshot) {
+              print('충격사고');
+              print(snapshot.docs.length);
+              _attendeesim = snapshot.docs.length;
+              notifyListeners();
+            });
+
+            FirebaseFirestore.instance
+                .collection('guestbook')
+                .where('text',isEqualTo:'턱끈해제') //jay user
+                .snapshots()
+                .listen((snapshot) {
+              print('턱끈해제');
+              print(snapshot.docs.length);
+              _attendeesbelt = snapshot.docs.length;
+              notifyListeners();
+            });
+/*
+            FirebaseFirestore.instance
+                .collection("guestbook")
+                .where("text",isEqualTo: null  )
+                .get().then((value){
+              value.docs.forEach((element) {
+                FirebaseFirestore.instance.collection("guestbook").doc(element.id).delete().then((value){
+                  print("Success!");
+                });
+              });
+            });*/
+            _guestBookSubscription = FirebaseFirestore.instance
+                .collection('guestbook')
+            // .where('userId',isEqualTo:user.uid) //jay user
+                .orderBy('timestamp', descending: true)
+                .snapshots()
+                .listen((snapshot){
+              _attendeesall = snapshot.docs.length;
+              player.stop();
+              player.setAsset('assets/audio/alram1.mp3');
+              print('모든 얼럿');
+              player.play();
+              //showMyDialog;
+
+              //GetMaterialApp.dialog (SimpleDialog ());
+              _attendeesetc = _attendeesall - _attendeesbelt - _attendeesim -_attendeesff-_attendeesia-_attendeesem;
+              _guestBookMessages = [];
+              int lastone =0;
+              snapshot.docs.forEach((document) {
+                if(lastone==0) {
+                  print('lastone');
+                  lastone=1;
+                  scaffoldKey.currentState!.showSnackBar(
+                      basicSnackBar(document.data()['text'] +'이 발생했습니, 작업자: '+document.data()['name']));
+                }
+                 /*if (document.data()['userId'] == user.uid ||logEmail=='jay@tinkerbox.kr') */ {
+                  var date = DateTime.fromMillisecondsSinceEpoch(
+                      document.data()['timestamp']);
+                  var formattedDate = DateFormat('MM월dd일 HH시mm분').format(date);
+                  _guestBookMessages.add(
+                    GuestBookMessage(
+                        name: document.data()['name'],
+                        message: document.data()['text'],
+                        timestamp: formattedDate,
+                        location: document.data()['latitude'].toString() + ', ' +
+                            document.data()['longitude'].toString()
+                    ),
+                  );
+                }
+              }
               );
-             }
+              notifyListeners();
+            });
+          }
+        else
+          {
+          _guestBookSubscription = FirebaseFirestore.instance
+              .collection('guestbook')
+          // .where('userId',isEqualTo:user.uid) //jay user
+              .orderBy('timestamp', descending: true)
+              .snapshots()
+              .listen((snapshot){
+            _guestBookMessages = [];
+            snapshot.docs.forEach((document) {
+              if (document.data()['userId'] == user.uid)  {
+                var date = DateTime.fromMillisecondsSinceEpoch(
+                    document.data()['timestamp']);
+                var formattedDate = DateFormat('MM월dd일 HH시mm분').format(date);
+                _guestBookMessages.add(
+                  GuestBookMessage(
+                      name: document.data()['name'],
+                      message: document.data()['text'],
+                      timestamp: formattedDate,
+                      location: document.data()['latitude'].toString() + ', ' +
+                          document.data()['longitude'].toString()
+                  ),
+                );
+              }
             }
-          );
-          notifyListeners();
-        });
+            );
+            notifyListeners();
+          });
+        }
         // to here.
         // Add from here
         _attendingSubscription = FirebaseFirestore.instance
@@ -1350,6 +1514,7 @@ class ApplicationState extends ChangeNotifier {
         print('logout ');
         bTdevice?.disconnect();
         logState = false;
+        logEmail='사용자 정보없음';
         _loginState = ApplicationLoginState.loggedOut;
         // Add from here
         _guestBookMessages = [];
@@ -1361,9 +1526,6 @@ class ApplicationState extends ChangeNotifier {
       notifyListeners();
     });
   }
-
-  int _attendees = 0;
-  int get attendees => _attendees;
 
   Attending _attending = Attending.unknown;
   StreamSubscription<DocumentSnapshot>? _attendingSubscription;
@@ -1490,7 +1652,9 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'HuBDIC New HealthCare',
+
+      debugShowCheckedModeBanner: false,
+      title: 'Smart Helmet',
       //title: 'Firebase Meetup',
       theme: ThemeData(
         buttonTheme: Theme.of(context).buttonTheme.copyWith(
@@ -1521,10 +1685,154 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
 
+  addNewBeneficiaryButton() {
+    return InkWell(
+      /*
+      onTap: () {
+        Navigator.pop(context);
+      },*/
+      /* onTap: () => Navigator.push(
+        context,
+        PageTransition(
+          duration: Duration(milliseconds: 500),
+          type: PageTransitionType.rightToLeft,
+          child: AddNewBeneficiary(),
+        ),
+      ),*/
+      child: Container(
+        child: Container(
+          margin: EdgeInsets.all(fixPadding * 2.0),
+          padding: EdgeInsets.symmetric(vertical: fixPadding),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.deepPurple,
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: Text(
+            '종합 사고 상황',style:TextStyle(
+    fontSize: 18.0,
+    color: Colors.white,
+    fontWeight: FontWeight.w500 ,),
+            //style: white16BoldTextStyle,
+          ),
+        ),
+      ),
+    );
+  }
+
+  benificiariesText() {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: fixPadding * 2.0,
+      ),
+      child: Text(
+        'Your beneficiaries',
+        // style: black16BoldTextStyle,
+      ),
+    );
+  }
+
+  userBeneficiaries() {
+    return Container(
+      margin: EdgeInsets.only(
+        top: fixPadding + 5.0,
+        bottom: fixPadding + 5.0,
+      ),
+      child: GridView.count(
+        crossAxisCount: 4,
+        childAspectRatio: 0.7,
+        padding: const EdgeInsets.all(4.0),
+        mainAxisSpacing: 0.0,
+        crossAxisSpacing: 0.0,
+        shrinkWrap: true,
+        primary: true,
+        physics: NeverScrollableScrollPhysics(),
+        children: beneficiariesList.map(
+              (item) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                InkWell(
+                  onTap: () {
+                   // Navigator.pop(context);
+                  },
+                  /*
+                  onTap: () => Navigator.push(
+                    context,
+                    PageTransition(
+                      duration: Duration(milliseconds: 500),
+                      type: PageTransitionType.rightToLeft,
+                      child: BeneficiaryMoneyTransfer(
+                        userPhoto: item['image'],
+                        name: item['name'],
+                      ),
+                    ),
+                  ),*/
+                  child: Column(
+                    children: [
+                      Text(
+                        item['name']!,
+                        style: TextStyle(
+                          fontSize: 14.0,
+                          color: blackColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+
+                      SizedBox(height: 10.0),
+                      Text(
+                        (item['name']=='충격사고')?
+                        _attendeesim.toString():
+                        (item['name']=='낙하사고')?
+                      _attendeesff.toString():
+                        (item['name']=='턱끈해제')?
+                        _attendeesbelt.toString():
+                        (item['name']=='위급상황')?
+                        _attendeesem.toString():
+                        (item['name']=='무활동반응')?
+                        _attendeesia.toString():
+                        (item['name']=='그밖의긴급상황')?
+                        _attendeesetc.toString():
+                          _attendeesall.toString(),
+                        style: TextStyle(
+                          fontSize: 28.0,
+                          color: Colors.deepPurple,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      //SizedBox(height: 10.0),
+                      Icon(
+                        Icons.format_list_numbered,
+                        color: Colors.black54,
+                        //size: 10.0,
+                      ),
+/*
+                      Container(
+                        height: 60.0,
+                        width: 60.0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          image: DecorationImage(
+                            image: AssetImage(item['image']!),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),*/
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ).toList(),
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
 
+      key: scaffoldKey,
       body:
       ListView(
         children: <Widget>[
@@ -1532,10 +1840,10 @@ class _HomeState extends State<Home> {
           //Image.asset('assets/image/caring-nurse-and-the-girl-FPAX4FK.png'),
 
           const SizedBox(height: 8),
+        if(logEmail!='jay@tinkerbox.kr') ...[
           IconAndDetail(Icons.calendar_today, DateFormat('yyyy년 MM월 dd일 HH시mm분').format(DateTime.now()).toString()),
           IconAndDetail(Icons.location_city, '서울시 구로구 A 작업지'),
           //IconAndDetail(Icons.location_city, '안양시 만안구 A병원'),
-
           // Add from here
           Consumer<ApplicationState>(
             builder: (context, appState, _) => Authentication(
@@ -1550,6 +1858,7 @@ class _HomeState extends State<Home> {
             ),
           ),
           // to here
+        ],
 
           Consumer<ApplicationState>(
             builder: (context, appState, _) => Column(
@@ -1570,13 +1879,6 @@ class _HomeState extends State<Home> {
                 // To here.
 
 
-                const Divider(
-                  height: 8,
-                  thickness: 1,
-                  indent: 8,
-                  endIndent: 8,
-                  color: Colors.grey,
-                ),
 
                 if (appState.loginState == ApplicationLoginState.loggedIn/*&&btState==BluetoothDeviceState.connected*/) ...[
 /*
@@ -1588,15 +1890,46 @@ class _HomeState extends State<Home> {
                   // To here
 */
 
-                  heightSpace,
-                  heightSpace,
-                  Header('마지막 발생한 안전상황'),
-                  GuestBook(
-                    messages: appState.guestBookMessages, // new
-                    addMessage: (String message) =>
-                        appState.addMessageToGuestBook(message),
-                    logcount: 1,
-                  ),
+                  if(logEmail=='jay@tinkerbox.kr') ...[
+                      addNewBeneficiaryButton(),
+                      //benificiariesText(),
+                      userBeneficiaries(),
+                    // Add from here
+                    Consumer<ApplicationState>(
+                      builder: (context, appState, _) => Authentication(
+                        email: appState.email,
+                        loginState: appState.loginState,
+                        startLoginFlow: appState.startLoginFlow,
+                        verifyEmail: appState.verifyEmail,
+                        signInWithEmailAndPassword: appState.signInWithEmailAndPassword,
+                        cancelRegistration: appState.cancelRegistration,
+                        registerAccount: appState.registerAccount,
+                        signOut: appState.signOut,
+                      ),
+                    ),
+                    // to here
+
+                  ]
+                  else ...
+                    [
+                      const Divider(
+                        height: 8,
+                        thickness: 1,
+                        indent: 8,
+                        endIndent: 8,
+                        color: Colors.grey,
+                      ),
+
+                      heightSpace,
+                      heightSpace,
+                      Header('마지막 발생한 안전상황'),
+                      GuestBook(
+                        messages: appState.guestBookMessages, // new
+                        addMessage: (String message) =>
+                            appState.addMessageToGuestBook(message),
+                        logcount: 1,
+                      ),
+                    ],
                 ],
                 if (appState.loginState == ApplicationLoginState.loggedOut/*&&btState==BluetoothDeviceState.connected*/) ...[
                   heightSpace,
@@ -1659,6 +1992,53 @@ class _FirstState extends State<First> {
 }
 
 
+class ATM {
+  String? bankname;
+  String? address;
+  double? rating;
+  double? distance;
+  LatLng? locationCoords;
+
+  ATM({
+    this.bankname,
+    this.address,
+    this.rating,
+    this.distance,
+    this.locationCoords,
+  });
+}
+
+final List<ATM> atms = [
+  ATM(
+    bankname: 'BankX ATM',
+    address: 'G-3, General Point, New York.',
+    rating: 4.0,
+    distance: 3.5,
+    locationCoords: LatLng(40.745803, -73.988213),
+  ),
+  ATM(
+    bankname: 'BankX Yogi Point ATM',
+    address: 'G-8, Yogi Point, New York.',
+    rating: 4.5,
+    distance: 3.0,
+    locationCoords: LatLng(40.751908, -73.989804),
+  ),
+  ATM(
+    bankname: 'BankX Varachha Point ATM',
+    address: 'B-8, Varachha Point, New York.',
+    rating: 5.0,
+    distance: 4.5,
+    locationCoords: LatLng(40.730148, -73.999639),
+  ),
+  ATM(
+    bankname: 'BankX Sarthana Point ATM',
+    address: 'K-9, Sarthana Point, New York.',
+    rating: 3.5,
+    distance: 3.5,
+    locationCoords: LatLng(40.729515, -73.985927),
+  ),
+];
+
 class Second extends StatefulWidget {
   Second({required this.latitude, required this.longitude});
   double latitude;
@@ -1668,6 +2048,35 @@ class Second extends StatefulWidget {
 }
 
 class _SecondState extends State<Second> {
+  List<LatLng> allMarkers = [];
+  late PageController _pageController;
+
+  late int prevPage;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    /*
+    atms.forEach((element) {
+
+      allMarkers.add(
+        Marker(
+          markerId: MarkerId(element.bankname),
+          draggable: false,
+          infoWindow: InfoWindow(
+            title: element.bankname,
+            snippet: element.address,
+          ),
+          position: element.locationCoords,
+        ),
+      );
+   ;
+    });
+    _pageController = PageController(initialPage: 1, viewportFraction: 0.65)
+      ..addListener(_onScroll);
+     */
+  }
 
   final controller = MapController(
     location: LatLng(37.3912922, 126.9395068),
@@ -1687,6 +2096,8 @@ class _SecondState extends State<Second> {
 
   void _gotoDefault() {
     controller.center = LatLng(geolatitude, geolongitude);
+
+    controller.zoom += 0.5;
     setState(() {});
   }
 
@@ -1731,6 +2142,124 @@ class _SecondState extends State<Second> {
     );
   }
 
+/*
+  _onScroll() {
+    if (_pageController.page!.toInt() != prevPage) {
+      prevPage = _pageController.page!.toInt();
+      //moveCamera();
+    }
+  }
+*/
+  _bankList(index) {
+    return AnimatedBuilder(
+      animation: _pageController,
+      builder: (context, widget) {
+        double value = 1.0;
+        if (_pageController.position.haveDimensions) {
+          value = _pageController.page! - index;
+          value = (1 - (value.abs() * 0.35) + 0.06).clamp(0.0, 1.0);
+        }
+        return Center(
+          child: SizedBox(
+            height: Curves.easeInOut.transform(value) * 160.0,
+            width: Curves.easeInOut.transform(value) * 400.0,
+            child: widget,
+          ),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(
+          horizontal: fixPadding,
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: fixPadding,
+          vertical: fixPadding,
+        ),
+        decoration: BoxDecoration(
+          color: whiteColor,
+          borderRadius: BorderRadius.circular(fixPadding),
+          boxShadow: [
+            BoxShadow(
+              spreadRadius: 1.0,
+              blurRadius: 4.0,
+              color: greyColor.withOpacity(0.5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  atms[index].bankname!,
+                 // style: black14BoldTextStyle,
+                ),
+                //height5Space,
+                Text(
+                  atms[index].address!,
+                 // style: grey12RegularTextStyle,
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Text(
+                  '${atms[index].rating!}',
+                  //style: black14RegularTextStyle,
+                ),
+                SizedBox(width: 3.0),
+                Icon(
+                  Icons.star,
+                  color: Color(0xffBFDC0F),
+                  size: 18.0,
+                ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      'Distance',
+                      //style: grey12RegularTextStyle,
+                    ),
+                   // height5Space,
+                    Text(
+                      '${atms[index].distance!} km',
+                      //style: black14BoldTextStyle,
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: fixPadding * 2.0,
+                    vertical: fixPadding - 5.0,
+                  ),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: whiteColor,
+                    border: Border.all(color: primaryColor),
+                    borderRadius: BorderRadius.circular(fixPadding * 2.0),
+                  ),
+                  child: Text(
+                    'Direction',
+                   // style: black12MediumTextStyle,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1749,9 +2278,13 @@ class _SecondState extends State<Second> {
           ),*/
         ],
       ),
-      body: MapLayoutBuilder(
+      body: Stack(
+        children: [
+          MapLayoutBuilder(
         controller: controller,
         builder: (context, transformer) {
+
+          controller.zoom += 3;
           final markerPositions =
           markers.map(transformer.fromLatLngToXYCoords).toList();
 
@@ -1830,6 +2363,24 @@ class _SecondState extends State<Second> {
           );
         },
       ),
+      /*
+      Positioned(
+        bottom: 20.0,
+        child: Container(
+          height: 200.0,
+          width: MediaQuery.of(context).size.width,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: atms.length,
+            itemBuilder: (context, index) {
+              return _bankList(index);
+            },
+          ),
+        ),
+      ),
+          */
+      ],
+    ),
       floatingActionButton: FloatingActionButton(
         onPressed: _gotoDefault,
         tooltip: '내위치',
@@ -1889,25 +2440,31 @@ class _HomePageState extends State<HomePage> {
             /*await*/ c.setNotifyValue(true);
             noti?.cancel();
             noti= c.value.listen((value) {
+              player.stop();
               if(ascii.decode(value).toString().contains('EM')) {
                 state = '위급상황';
-                player.setAsset('assets/audio/em0.mp3');
+                //player.setAsset('assets/audio/em0.mp3');
+                player.setAsset('assets/audio/alram1.mp3');
               }
               else if(ascii.decode(value).toString().contains('IA')) {
                 state = '무활동반응';
-                player.setAsset('asset/audio/ia0.mp3');
+                //player.setAsset('asset/audio/ia0.mp3');
+                player.setAsset('assets/audio/alram1.mp3');
               }
               else if(ascii.decode(value).toString().contains('FF')) {
                 state = '추락사고';
-                player.setAsset('assets/audio/ff0.mp3');
+                //player.setAsset('assets/audio/ff0.mp3');
+                player.setAsset('assets/audio/alram1.mp3');
               }
               else if(ascii.decode(value).toString().contains('Belt Disconnected')) {
                 state = '턱끈해제';
-                player.setAsset('assets/audio/belt0.mp3');
+                //player.setAsset('assets/audio/belt0.mp3');
+                player.setAsset('assets/audio/alram1.mp3');
               }
               else if(ascii.decode(value).toString().contains('IM')) {
                 state = '충격사고';
-                player.setAsset('assets/audio/im0.mp3');
+               // player.setAsset('assets/audio/im0.mp3');
+                player.setAsset('assets/audio/alram1.mp3');
               }
 
               if(_counter==0&& state!='이상없음') {
@@ -1944,25 +2501,31 @@ class _HomePageState extends State<HomePage> {
                   /*await*/ c.setNotifyValue(true);
                   noti?.cancel();
                   noti= c.value.listen((value) {
+                    player.stop();
                     if(ascii.decode(value).toString().contains('EM')) {
                       state = '위급상황';
-                      player.setAsset('assets/audio/em0.mp3');
+                      //player.setAsset('assets/audio/em0.mp3');
+                      player.setAsset('assets/audio/alram1.mp3');
                     }
                     else if(ascii.decode(value).toString().contains('IA')) {
                       state = '무활동반응';
-                      player.setAsset('asset/audio/ia0.mp3');
+                      //player.setAsset('asset/audio/ia0.mp3');
+                      player.setAsset('assets/audio/alram1.mp3');
                     }
                     else if(ascii.decode(value).toString().contains('FF')) {
                       state = '추락사고';
-                      player.setAsset('assets/audio/ff0.mp3');
+                      //player.setAsset('assets/audio/ff0.mp3');
+                      player.setAsset('assets/audio/alram1.mp3');
                     }
                     else if(ascii.decode(value).toString().contains('Belt Disconnected')) {
                       state = '턱끈해제';
                       player.setAsset('assets/audio/belt0.mp3');
+                      //player.setAsset('assets/audio/alram1.mp3');
                     }
                     else if(ascii.decode(value).toString().contains('IM')) {
                       state = '충격사고';
-                      player.setAsset('assets/audio/im0.mp3');
+                      // player.setAsset('assets/audio/im0.mp3');
+                      player.setAsset('assets/audio/alram1.mp3');
                     }
                     if(_counter==0&& state!='이상없음'){
                       if(_events!=null)
@@ -1970,7 +2533,6 @@ class _HomePageState extends State<HomePage> {
                       _events = new StreamController<int>();
                       _events?.add(10);
                       player.play();
-
                       alertD(context, state);
                     }
                     print('listenB:'+ state);
@@ -2277,8 +2839,7 @@ class _HomePageState extends State<HomePage> {
 
       ListView(
         children: <Widget>[
-          Image.asset('assets/image/under-construction-PU92FX4.png'),
-          //Image.asset('assets/image/caring-nurse-and-the-girl-FPAX4FK.png'),
+           //Image.asset('assets/image/caring-nurse-and-the-girl-FPAX4FK.png'),
 
           const SizedBox(height: 8),
           IconAndDetail(Icons.calendar_today, DateFormat('yyyy년 MM월 dd일 HH시mm분').format(DateTime.now()).toString()),
@@ -2368,3 +2929,296 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
 * */
+
+final beneficiariesList = [
+  {
+    'name': '모든사고',
+    'image': 'assets/image/helmet.png',
+  },
+  {
+    'name': '위급상황',
+    'image': 'assets/image/helmet.png',
+  },
+  {
+    'name': '낙하사고',
+    'image': 'assets/image/helmet.png',
+  },
+  {
+    'name': '충격사고',
+    'image': 'assets/image/helmet.png',
+  },
+  {
+    'name': '무활동반응',
+    'image': 'assets/image/helmet.png',
+  },
+  {
+    'name': '턱끈해제',
+    'image': 'assets/image/helmet.png',
+  },
+  {
+    'name': '그밖의긴급상황',
+    'image': 'assets/image/helmet.png',
+  },
+];
+class Beneficiaries extends StatefulWidget {
+  @override
+  _BeneficiariesState createState() => _BeneficiariesState();
+}
+
+class _BeneficiariesState extends State<Beneficiaries> {
+
+  final historyBeneficiariesList = [
+    {
+      'name': 'Beatriz',
+      'image': 'assets/user/user_11.jpg',
+    },
+    {
+      'name': 'Shira',
+      'image': 'assets/user/user_12.jpg',
+    },
+    {
+      'name': 'Steve',
+      'image': 'assets/user/user_8.jpg',
+    },
+    {
+      'name': 'Mike',
+      'image': 'assets/user/user_2.jpg',
+    },
+    {
+      'name': 'Linnea',
+      'image': 'assets/user/user_3.jpg',
+    },
+    {
+      'name': 'John',
+      'image': 'assets/user/user_1.jpg',
+    },
+  ];
+  double? height;
+  @override
+  Widget build(BuildContext context) {
+    height = MediaQuery.of(context).size.height;
+    return Scaffold(
+      backgroundColor: scaffoldBgColor,
+      appBar: AppBar(
+        backgroundColor: whiteColor,
+        elevation: 1.0,
+        centerTitle: true,
+        title: Text(
+          'Beneficiaries',
+          //style: black18BoldTextStyle,
+        ),
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: blackColor,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: ListView(
+        physics: BouncingScrollPhysics(),
+        children: [
+          addNewBeneficiaryButton(),
+          benificiariesText(),
+          userBeneficiaries(),
+          historyText(),
+          historyBeneficiaries(),
+        ],
+      ),
+    );
+  }
+
+  historyBeneficiaries() {
+    return Container(
+      // height: height / 3.7,
+      margin: EdgeInsets.only(
+        top: fixPadding + 5.0,
+        bottom: fixPadding + 5.0,
+      ),
+      child: GridView.count(
+        crossAxisCount: 3,
+        childAspectRatio: 1.0,
+        padding: const EdgeInsets.all(4.0),
+        mainAxisSpacing: 4.0,
+        crossAxisSpacing: 4.0,
+        shrinkWrap: true,
+        primary: true,
+        physics: NeverScrollableScrollPhysics(),
+        children: historyBeneficiariesList.map(
+              (item) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                InkWell(
+                onTap: () {
+              Navigator.pop(context);
+            },/* Navigator.push(
+                    context,
+                    PageTransition(
+                      duration: Duration(milliseconds: 500),
+                      type: PageTransitionType.rightToLeft,
+                      child: BeneficiaryMoneyTransfer(
+                        userPhoto: item['image'],
+                        name: item['name'],
+                      ),
+                    ),
+                  ),*/
+                  child: Column(
+                    children: [
+                      Text(
+                        item['name']!,
+                        //style: black14MediumTextStyle,
+                      ),
+                      SizedBox(height: 10.0),
+                      Container(
+                        height: 70.0,
+                        width: 70.0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          image: DecorationImage(
+                            image: AssetImage(item['image']!),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ).toList(),
+      ),
+    );
+  }
+
+  historyText() {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: fixPadding * 2.0,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.history,
+            size: 20.0,
+            color: blackColor,
+          ),
+          widthSpace,
+          Text(
+            'History',
+           // style: black16BoldTextStyle,
+          ),
+        ],
+      ),
+    );
+  }
+
+  addNewBeneficiaryButton() {
+    return InkWell(
+        onTap: () {
+          Navigator.pop(context);
+        },
+     /* onTap: () => Navigator.push(
+        context,
+        PageTransition(
+          duration: Duration(milliseconds: 500),
+          type: PageTransitionType.rightToLeft,
+          child: AddNewBeneficiary(),
+        ),
+      ),*/
+      child: Container(
+        child: Container(
+          margin: EdgeInsets.all(fixPadding * 2.0),
+          padding: EdgeInsets.symmetric(vertical: fixPadding),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: primaryColor,
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: Text(
+            'Add new beneficiary',
+            //style: white16BoldTextStyle,
+          ),
+        ),
+      ),
+    );
+  }
+
+  benificiariesText() {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: fixPadding * 2.0,
+      ),
+      child: Text(
+        'Your beneficiaries',
+       // style: black16BoldTextStyle,
+      ),
+    );
+  }
+
+  userBeneficiaries() {
+    return Container(
+      margin: EdgeInsets.only(
+        top: fixPadding + 5.0,
+        bottom: fixPadding + 5.0,
+      ),
+      child: GridView.count(
+        crossAxisCount: 3,
+        childAspectRatio: 1.0,
+        padding: const EdgeInsets.all(4.0),
+        mainAxisSpacing: 4.0,
+        crossAxisSpacing: 4.0,
+        shrinkWrap: true,
+        primary: true,
+        physics: NeverScrollableScrollPhysics(),
+        children: beneficiariesList.map(
+              (item) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  /*
+                  onTap: () => Navigator.push(
+                    context,
+                    PageTransition(
+                      duration: Duration(milliseconds: 500),
+                      type: PageTransitionType.rightToLeft,
+                      child: BeneficiaryMoneyTransfer(
+                        userPhoto: item['image'],
+                        name: item['name'],
+                      ),
+                    ),
+                  ),*/
+                  child: Column(
+                    children: [
+                      Text(
+                        item['name']!,
+                        //style: black14MediumTextStyle,
+                      ),
+                      SizedBox(height: 10.0),
+                      Container(
+                        height: 70.0,
+                        width: 70.0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          image: DecorationImage(
+                            image: AssetImage(item['image']!),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ).toList(),
+      ),
+    );
+  }
+}
