@@ -759,6 +759,8 @@ Future<DocumentReference> addStateToGuestBook(String message) {
 
   message = message;
 
+  print('tmrGeo_geolocation ${geolatitude}, ${geolongitude}');
+
   return FirebaseFirestore.instance.collection('guestbook').add({
     'text': message,
     'timestamp': DateTime.now().millisecondsSinceEpoch,
@@ -1454,11 +1456,12 @@ class ApplicationState extends ChangeNotifier {
                 .snapshots()
                 .listen((snapshot){
               _attendeesall = snapshot.docs.length;
-              player.stop();
-              player.setAsset('assets/audio/alram1.mp3');
-              print('모든 얼럿');
+              _stopSound();
+              _setAsset('assets/audio/alram1.mp3');
+              _setLoopMode(LoopMode.one);
               _playSound();
-              //showMyDialog;
+              print('페어런츠 모든 얼럿');
+
 
               //GetMaterialApp.dialog (SimpleDialog ());
               _attendeesetc = _attendeesall - _attendeesbelt - _attendeesim -_attendeesff-_attendeesia-_attendeesem;
@@ -2110,7 +2113,7 @@ class _SecondState extends State<Second> {
   }
 
   final controller = MapController(
-    location: LatLng(37.3912922, 126.9395068),
+    location: LatLng(37.4837122, 126.8954294),
     zoom:  18,
   );
 
@@ -2128,6 +2131,12 @@ class _SecondState extends State<Second> {
 
   void _gotoDefault() {
     controller.center = LatLng(geolatitude, geolongitude);
+    //controller.zoom += 0.5;
+    setState(() {});
+  }
+
+  void _gotoTarget() {
+    controller.center = LatLng(widget.latitude, widget.longitude);
     //controller.zoom += 0.5;
     setState(() {});
   }
@@ -2316,6 +2325,7 @@ class _SecondState extends State<Second> {
         builder: (context, transformer) {
 
           //controller.zoom += 3;
+         // controller.location =
           final markerPositions =
           markers.map(transformer.fromLatLngToXYCoords).toList();
 
@@ -2412,11 +2422,36 @@ class _SecondState extends State<Second> {
           */
       ],
     ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: Stack(
+        children: <Widget>[
+          Padding(padding: EdgeInsets.only(left:31),
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: FloatingActionButton.extended(
+                onPressed: _gotoDefault,
+                label: Text('내위치 '),
+                icon: Icon(Icons.my_location),
+              ),
+            ),
+          ),
+
+          Align(
+            alignment: Alignment.bottomRight,
+            child: FloatingActionButton.extended(
+              onPressed: _gotoTarget,
+              label: Text('사고위치'),
+              icon: Icon(Icons.location_pin),
+              backgroundColor: Colors.deepOrange,
+            ),
+          ),
+        ],
+      )
+      /*
+      FloatingActionButton(
         onPressed: _gotoDefault,
         tooltip: '내위치',
         child: Icon(Icons.my_location),
-      ),
+      ),*/
     );
   }
 }
@@ -2435,6 +2470,9 @@ class _HomePageState extends State<HomePage> {
   StreamController<int>? _events;
 
   StreamController<int>? _eventsA;
+
+
+  StreamController<int>? _eventsBattery;
   void initState() {
     super.initState();
     player = AudioPlayer();
@@ -2443,7 +2481,7 @@ class _HomePageState extends State<HomePage> {
     Geolocator.getCurrentPosition().then((value) => {
       geolatitude=value.latitude,
       geolongitude=value.longitude,
-      print('geolocation ${geolatitude}, ${geolongitude}'),
+      print('geolocation(init) ${geolatitude}, ${geolongitude}'),
     });
 
     _timer_geo = Timer.periodic(Duration(seconds: 30), (timer) {
@@ -2451,22 +2489,27 @@ class _HomePageState extends State<HomePage> {
 
         geolatitude=value.latitude,
         geolongitude=value.longitude,
-        print('geolocation ${geolatitude}, ${geolongitude}'),
+        print('tmrGeo_geolocation ${geolatitude}, ${geolongitude}'),
       });
     });
+
 
   }
 
   var writecharacteristic;
 
-  void addNewPopup(String state)  {
+  void addNewPopup(String state, int time)  {
     if(_eventsA!=null)
       _eventsA?.close();
     _eventsA = new StreamController<int>();
-    _eventsA?.add(60);
-    alertA(context, state);
+    _eventsA?.add(time);
+    alertA(context, state, time);
   }
-
+  // used by FutureBuilder
+  Future<int> _calculateSquare(int num) async {
+    await Future.delayed(Duration(seconds: 5));
+    return num * num;
+  }
   Future<void> connectMyProtocol(BluetoothDevice? device) async {
 
     if(device == null) { print('connectMyProtocol null return'); return;}
@@ -2595,7 +2638,7 @@ class _HomePageState extends State<HomePage> {
               for(BluetoothCharacteristic c in characteristics) {
                 if (c.uuid.toString().contains('6e400002'))
                 {
-                  print('get characteristic 4 belt status');
+                  //print('get characteristic 4 belt status');
                   writecharacteristic = c;
                 }
 
@@ -2604,74 +2647,70 @@ class _HomePageState extends State<HomePage> {
                   noti?.cancel();
                   noti= c.value.listen((value) {
                     String state='이상없음';
-                    print('----^^--------------------------');
-                    print(ascii.decode(value).toString());
-                    _stopSound();
-                    if((ascii.decode(value).toString().contains('Belt Connected')||ascii.decode(value).toString().contains('Belt Alive'))&&beltState==false) {
+                    //_stopSound();
+                    String btMessage = ascii.decode(value).toString();
+                    print('------------- Notify Listen -----------------');
+                    print('listenMsg: '+ btMessage.toString());
+                    if(btMessage.contains('BAT')){
+                      int adcBatt = int.parse(btMessage.substring(btMessage.lastIndexOf(",")+1));
+                      setState(() {
+                        batteryPercent =(((adcBatt-2700)/(3400-2700))*100);
+                      });
+                      if(adcBatt>2700) {
+                        _timer_bat?.cancel();
+                        _timer_bat = Timer.periodic(Duration(seconds: 60), (timer) {
+                          writecharacteristic.write(utf8.encode('req bat'));
+                        });
+                      }
+
+                    }
+                    else if((btMessage.contains('Belt Connected')||btMessage.toString().contains('Belt Alive'))&&beltState==false) {
                       state = '턱끈연결';
                       beltState = true;
-                      print('beltStatebt1-c:'+beltState.toString());
                       _setAsset('assets/audio/conBelt.mp3');
-                      //_setAsset('assets/audio/alram1.mp3');
                       _setLoopMode(LoopMode.off);
                     }
-                    else if(ascii.decode(value).toString().contains('EM')) {
+                    else if(btMessage.contains('EM')) {
                       state = '위급상황';
-                      //_setAsset('assets/audio/em0.mp3');
                       _setAsset('assets/audio/alram1.mp3');
                       _setLoopMode(LoopMode.one);
                     }
-                    else if(ascii.decode(value).toString().contains('IA')) {
+                    else if(btMessage.contains('IA')) {
                       state = '무활동반응';
-                      //_setAsset('asset/audio/ia0.mp3');
                       _setAsset('assets/audio/alram1.mp3');
                       _setLoopMode(LoopMode.one);
                     }
-                    else if(ascii.decode(value).toString().contains('FF')) {
+                    else if(btMessage.contains('FF')) {
                       state = '추락사고';
-                      //_setAsset('assets/audio/ff0.mp3');
                       _setAsset('assets/audio/alram1.mp3');
                       _setLoopMode(LoopMode.one);
                     }
-                    else if(ascii.decode(value).toString().contains('Belt Disconnected')) {
+                    else if(btMessage.contains('Belt Disconnected')) {
                       state = '턱끈해제';
                       beltState = false;
-                      print('beltStatebt2-d:'+beltState.toString());
                       _setAsset('assets/audio/belt0.mp3');
-                      //_setAsset('assets/audio/alram1.mp3');
                       _setLoopMode(LoopMode.off);
                     }
-                    else if(ascii.decode(value).toString().contains('IM')) {
+                    else if(btMessage.contains('IM')) {
                       state = '충격사고';
-                      // _setAsset('assets/audio/im0.mp3');
                       _setAsset('assets/audio/alram1.mp3');
                       _setLoopMode(LoopMode.one);
                     }
 
                     if(_counter==0&& state!='이상없음'){
-
+                      //_stopSound();
                       _playSound();
-                        print('beltStatebt3-d:'+beltState.toString());
                       addStateToGuestBook(state);
-                        print('beltStatebt4-d:'+beltState.toString());
-                      if(_events!=null)
-                        _events?.close();
-                      _events = new StreamController<int>();
-                        print('beltStatebt5-d:'+beltState.toString());
-                      _events?.add(60);
-                        print('beltStatebt6-d:'+beltState.toString());
 
-                      print('context-d:'+context.toString());
-
-                      print('context-w:'+context.widget.toString());
-
-                      //print('context-o:'+context.owner.toString());
-                      //if(context.widget!=null)
-                      alertD(context, state);
-                        print('beltStatebt7-d:'+beltState.toString());
+                      if(state!='턱끈연결'&&state!='턱끈해제') {
+                        if(_events!=null)
+                          _events?.close();
+                        _events = new StreamController<int>();
+                        _events?.add(60);
+                        alertD(context, state);
+                      }
                     }
-                    print('listenB:'+ state);
-                    print(ascii.decode(value));
+                    print('------------- End of listenB('+state+') -------------');
                   });
                 }
               }
@@ -2702,10 +2741,12 @@ class _HomePageState extends State<HomePage> {
 
   Timer? _timer;
   Timer? _timer_geo;
+
+  Timer? _timer_bat;
   Timer? _timer_beltinit;
 
 
-  void alertA(BuildContext context, String State) async {
+  void alertA(BuildContext context, String State, int time) async {
 
     var alert = await AlertDialog(
       //title: Center(child:Text('${State} 상황 발생', style: TextStyle(fontSize:30,fontWeight: FontWeight.bold, color: Colors.deepOrange),)),
@@ -2757,7 +2798,9 @@ class _HomePageState extends State<HomePage> {
                   Text(
                     (State=='연결해제')?
                     "알람 소리를 해제하려면 \'해제\'버튼을 눌러주세요"
-                    :"장치연결이 해제 되었습니다",
+                    :(State=='상황해제')?
+                    "응급상황이 해제 되었습니다":
+                    "장치연결이 해제 되었습니다",
                     //Text("상황을 해제하려면 \'해제\'버튼을 눌러주세요\n \'해제\'하지 않으면 자동 승인됩니다",
                     style: TextStyle(
                       color: Colors.black54,
@@ -2789,7 +2832,7 @@ class _HomePageState extends State<HomePage> {
                   child:Padding(
                     padding: EdgeInsets.only(left: 20,right: 20),
                     child: (State!='연결해제')?ElevatedButton(
-                      child: Text('해제'),
+                      child: Text('확인'),
                       style: ElevatedButton.styleFrom(
                           primary: Colors.deepPurple,
                           padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
@@ -2829,7 +2872,7 @@ class _HomePageState extends State<HomePage> {
         context: context,
         barrierDismissible: false,
         builder: (BuildContext builderContext) {
-          _counterA = 60;
+          _counterA = time;
           _timer?.cancel();
           _timer = Timer.periodic(Duration(seconds: 1), (timer) {
             if(_counterA > 0) {
@@ -2840,7 +2883,7 @@ class _HomePageState extends State<HomePage> {
               _counterA=0;
               _timer?.cancel();
               player.stop;
-              //Navigator.of(context, rootNavigator: true).pop(false);
+              Navigator.of(context, rootNavigator: true).pop(false);
             }
             print(_counterA);
             _eventsA?.add(_counterA);
@@ -2900,7 +2943,9 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              Text("알람 소리를 해제하려면 \'중\'버튼을 눌러주세요",
+              Text(
+                (State=='위급상황')?"응급상황이 발생했습니까?"
+                :"알람 소리를 해제하려면 \'중단\'버튼을 눌러주세요",
               //Text("상황을 해제하려면 \'해제\'버튼을 눌러주세요\n \'해제\'하지 않으면 자동 승인됩니다",
                 style: TextStyle(
                   color: Colors.black54,
@@ -2909,7 +2954,7 @@ class _HomePageState extends State<HomePage> {
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 20,),
-              (State=='위급상황')?
+              (State=='위급해제')?
                 Text("- ${snapshot.data} -",
                   style: TextStyle(
                   color: Colors.deepPurple,
@@ -2935,7 +2980,7 @@ class _HomePageState extends State<HomePage> {
                 child:Padding(
                   padding: EdgeInsets.only(left: 20,right: 20),
                   child:  /*(State=='위급상황')? */ElevatedButton(
-                    child: (State=='위급상황')?Text('상황해제'):Text('즁단'),
+                    child: (State=='위급상황')?Text('아니오'):Text('중단'),
                     style: ElevatedButton.styleFrom(
                         primary: Colors.deepPurple,
                         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
@@ -2943,12 +2988,13 @@ class _HomePageState extends State<HomePage> {
                             fontSize: 18,
                             fontWeight: FontWeight.bold)),
                     onPressed:() {
-                      _stopSound();
                       _counter=0;
                       _timer?.cancel();
                       if(State=='위급상황')
                         addStateToGuestBook('상황해제');
 
+                      _stopSound();
+                      addNewPopup('상황해제', 10);
                       Navigator.of(context, rootNavigator: true).pop(false);
                     },
                   )/*:Container()*/,
@@ -2957,19 +3003,19 @@ class _HomePageState extends State<HomePage> {
               ),
 
               SizedBox(height: 15,),
-/*
+
               if(State=='위급상황')
               TextButton(
-                child: Text('승인',style: TextStyle(fontSize:18,color: Colors.deepPurple /*,fontWeight: FontWeight.bold*/)),
+                child: Text('네. 응급상황입니다',style: TextStyle(fontSize:18,color: Colors.deepPurple /*,fontWeight: FontWeight.bold*/)),
                 onPressed: () {
 
-                  player.stop;
-                  _counter=0;
+               //   player.stop;
+               //   _counter=0;
                   _timer?.cancel();
-                  Navigator.of(context, rootNavigator: true).pop(false);
+               //   Navigator.of(context, rootNavigator: true).pop(false);
                 },
               ),
-              */
+
             ]
         ),
       ],
@@ -2999,7 +3045,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
   //FlutterBlueApp
-
+  double batteryPercent=0;
   BluetoothDeviceState? btState =BluetoothDeviceState.disconnected;
   bool isDissconnectbyMenu =false;
   int _currentIndex = 0;
@@ -3040,6 +3086,7 @@ class _HomePageState extends State<HomePage> {
                                builder: (context) =>
                                    FindDevicesScreen())).then((value) =>
                            setState(() {})); //_startscan();
+                   batteryPercent =0;
                    print(bTdevice?.name);
                    text = ' 연결하기';
                   break;
@@ -3056,21 +3103,22 @@ class _HomePageState extends State<HomePage> {
               btstateMachine?.cancel();
               btstateMachine = bTdevice?.state.listen((event) async {
                 if(event==BluetoothDeviceState.disconnected &&isConnected==true) {
-                    print('--- Bt State Disconnected ---');
+                    print('-------- Bt State Disconnected --------');
                     writecharacteristic=0;
                     isConnected=false;
                     if(beltState) {
+                      _stopSound();
                       _setAsset('assets/audio/alram1.mp3');
                       _setLoopMode(LoopMode.one);
                       _playSound();//player.play();
                       isHelmetDisconnected=true;
-                      addNewPopup("연결해제");
+                      addNewPopup("연결해제", 15);
                     }
                     else
                       beltState=false;
                   }
                 else if(event==BluetoothDeviceState.connected &&isConnected==false){
-                  print('--- Bt State connected ---');
+                  print('-------- Bt State connected ---------');
                   if(isHelmetDisconnected)
                     {
                       _stopSound();
@@ -3084,20 +3132,26 @@ class _HomePageState extends State<HomePage> {
                     }
                   isHelmetDisconnected=false;
                   isConnected = true;
-                   connectMyProtocol( bTdevice);
+                  await connectMyProtocol( bTdevice);
+
                   _timer_beltinit?.cancel();
-                  _timer_beltinit = Timer.periodic(Duration(seconds: 5), (timer) {
-                    Geolocator.getCurrentPosition().then((value) => {
-                      print('belt status message_timer_init'),
-                      (beltState==false)
-                          ?writecharacteristic.write(utf8.encode('belt status')):print('belt conected1'),
-                      (beltState==true)
-                          ?_timer_beltinit?.cancel():print('belt conected2'),
-                    });
+                  _timer_beltinit = Timer.periodic(Duration(milliseconds: 100), (timer) {
+                  print('req belt => current beltstate:'+ beltState.toString());
+                  if (beltState==false){
+                      writecharacteristic.write(utf8.encode('belt status'));}
+                  else{
+                      _timer_beltinit?.cancel();}
                   });
+
+                  _timer_bat?.cancel();
+                  _timer_bat = Timer.periodic(Duration(milliseconds: 100), (timer) {
+                      print('req batt');
+                      writecharacteristic.write(utf8.encode('req bat'));
+                  });
+
                 }
                 btState=event;
-                print('Appbar_ state.listen ----------,BluetoothDeviceState:'+event.toString()+', isconnected:'+isConnected.toString());
+                print('---------- End of appBarState:listen ----------');
 
               });
               return ElevatedButton(
@@ -3111,6 +3165,14 @@ class _HomePageState extends State<HomePage> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
+                      Icon(Icons.battery_std, color: Colors.white),
+                      Text(
+                        batteryPercent.round().toString()+'%  ',
+                        style: Theme.of(context)
+                            .primaryTextTheme
+                            .button
+                            ?.copyWith(color: Colors.white,fontSize: 18),
+                      ),
                         (text == ' 연결끊기')
                           ? Icon(Icons.bluetooth_connected_rounded, color: Colors.white)
                           : Icon(Icons.bluetooth_searching_outlined, color: Colors.white),
