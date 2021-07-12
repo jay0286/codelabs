@@ -1720,7 +1720,7 @@ class ApplicationState extends ChangeNotifier {
         logEmail =user.email;
         if(logEmail=='jay@tinkerbox.kr')
           {
-            /*
+/*
             await FirebaseFirestore.instance
                 .collection("guestbook")
                 .where("text",whereIn: ['위급상황','상황해제','턱끈연결','턱끈해제'])
@@ -1734,7 +1734,7 @@ class ApplicationState extends ChangeNotifier {
               });
             });
 
-             */
+*/
 
             _attendeesia=0;
             listenIa?.cancel();
@@ -1767,6 +1767,10 @@ class ApplicationState extends ChangeNotifier {
                       print('무활동반응');
                       print(snapshot.docs.length);
                       if(_attendeesia>0) {
+                        print('stored:'+document.data()['timestamp']);
+
+                        print('now: $DateTime.now().millisecondsSinceEpoch');
+
                         _stopSound();
                         _setAsset('assets/audio/alram1.mp3');
                         _setLoopMode(LoopMode.one);
@@ -1820,7 +1824,7 @@ class ApplicationState extends ChangeNotifier {
                   lastone=1;
                   print('추락사고');
                   print(snapshot.docs.length);
-                  if(_attendeesff>0) {
+                  if(_attendeesff>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch) {
                     _stopSound();
                     _setAsset('assets/audio/alram1.mp3');
                     _setLoopMode(LoopMode.one);
@@ -1876,7 +1880,7 @@ class ApplicationState extends ChangeNotifier {
                   lastone=1;
                   print('충격사고');
                   print(snapshot.docs.length);
-                  if(_attendeesim>0) {
+                  if(_attendeesim>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch) {
                     _stopSound();
                     _setAsset('assets/audio/alram1.mp3');
                     _setLoopMode(LoopMode.one);
@@ -1931,7 +1935,8 @@ class ApplicationState extends ChangeNotifier {
                   var formattedDate = DateFormat('MM월dd일 HH시mm분').format(date);
                   if(lastone==0) {
                     lastone=1;
-                    if(_attendeesem>0) {
+                    if(_attendeesem>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch ) {
+
                       _stopSound();
                       _setAsset('assets/audio/alram1.mp3');
                       _setLoopMode(LoopMode.one);
@@ -1990,7 +1995,7 @@ class ApplicationState extends ChangeNotifier {
                   lastone=1;
                   print('상황해제');
                   print(snapshot.docs.length);
-                  if(_attendeesemrels>0) {
+                  if(_attendeesemrels>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch) {
                     _stopSound();
                     _setAsset('assets/audio/relEvent.mp3');
                     _setLoopMode(LoopMode.off);
@@ -2046,7 +2051,7 @@ class ApplicationState extends ChangeNotifier {
                   print('장비연결해제');
                   print(snapshot.docs.length);
 
-                  if(_attendeesoffline>0) {
+                  if(_attendeesoffline>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch) {
                     _stopSound();
                     _setAsset('assets/audio/alram1.mp3');
                     _setLoopMode(LoopMode.one);
@@ -2102,7 +2107,7 @@ class ApplicationState extends ChangeNotifier {
                   print('장비연결해제복귀');
                   print(snapshot.docs.length);
 
-                  if(_attendeesRecorvline>0) {
+                  if(_attendeesRecorvline>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch) {
                     _stopSound();
                     _setAsset('assets/audio/relEvent.mp3');
                     _setLoopMode(LoopMode.off);
@@ -2160,7 +2165,7 @@ class ApplicationState extends ChangeNotifier {
                   print('턱끈연결');
                   print(snapshot.docs.length);
                   /*
-              if(_attendeesbelt>0) {
+              if(_attendeesbelt>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch) {
                 _stopSound();
                 _setAsset('assets/audio/alram1.mp3');
                 _setLoopMode(LoopMode.one);
@@ -2217,7 +2222,7 @@ class ApplicationState extends ChangeNotifier {
                   print('턱끈해제');
                   print(snapshot.docs.length);
                   /*
-                  if(_attendeesDissbelt>0) {
+                  if(_attendeesDissbelt>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch) {
                     _stopSound();
                     _setAsset('assets/audio/alram1.mp3');
                     _setLoopMode(LoopMode.one);
@@ -2276,7 +2281,7 @@ class ApplicationState extends ChangeNotifier {
                 lastone=1;
                 print('기타상황');
                 print(snapshot.docs.length);
-                if(_attendeesetc>0) {
+                if(_attendeesetc>0 &&document.data()['timestamp']+60000>DateTime.now().millisecondsSinceEpoch) {
                   _stopSound();
                   _setAsset('assets/audio/alram1.mp3');
                   _setLoopMode(LoopMode.one);
