@@ -2,7 +2,7 @@
 //구글파이어스토어 로그
 import 'dart:async';                                    // new
 import 'dart:convert';
-import 'dart:io';
+//import 'dart:io';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';  // new
 
@@ -73,7 +73,7 @@ List<GuestBookMessage> _etcLogMessages = [];
 
 BluetoothDeviceState? btState =BluetoothDeviceState.disconnected;
 
-
+/*
 SnackBar basicSnackBar(String message) {
 
   return SnackBar(
@@ -86,7 +86,7 @@ SnackBar basicSnackBar(String message) {
     ),
   );
 }
-
+*/
 
 
 class Profile extends StatelessWidget {
@@ -169,8 +169,14 @@ class Profile extends StatelessWidget {
                             Navigator.pop(context);
                           }
                           else {
-                            scaffoldKey.currentState!.showSnackBar(
-                              basicSnackBar('먼저 스마트헬멧 연결을 종료해 주세요'));
+                            // ignore: deprecated_member_use
+                            Fluttertoast.showToast(
+                              msg: '먼저 스마트헬멧 연결을 종료해 주세요',
+                              backgroundColor: Colors.black,
+                              textColor: whiteColor,
+                            );
+                            //scaffoldKey.currentState!.showSnackBar(
+                             // basicSnackBar('먼저 스마트헬멧 연결을 종료해 주세요'));
                           }
                           // Navigator.push(context, MaterialPageRoute(builder: (context)=>Home()));
                         },
