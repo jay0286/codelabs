@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_blue/flutter_blue.dart';
+import 'package:gtk_flutter/main.dart';
 
+import 'package:fluttertoast/fluttertoast.dart';
 import 'widgets.dart';
 
 enum ApplicationLoginState {
@@ -99,7 +102,18 @@ class Authentication extends StatelessWidget {
               padding: const EdgeInsets.only(left: 24, bottom: 8),
               child: StyledButton(
                 onPressed: () {
-                  signOut();
+                  //signOut();
+                  if(btState==BluetoothDeviceState.disconnected) {
+                    signOut();
+                  }
+                  else {
+                    // ignore: deprecated_member_use
+                    Fluttertoast.showToast(
+                      msg: '먼저 스마트헬멧 연결을 종료해 주세요',
+                      backgroundColor: Colors.black,
+                      textColor: Colors.white,
+                    );
+                  }
                 },
                 child: const Text('로그아웃'),
               ),

@@ -13,7 +13,7 @@ class ScanResultTile extends StatelessWidget {
   final VoidCallback? onTap;
 
   Widget _buildTitle(BuildContext context) {
-    if (result.device.name.length > 0) {
+    if (result.device.name.isNotEmpty) {
       return Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,12 +35,12 @@ class ScanResultTile extends StatelessWidget {
 
   Widget _buildAdvRow(BuildContext context, String title, String value) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(title, style: Theme.of(context).textTheme.caption),
-          SizedBox(
+          const SizedBox(
             width: 12.0,
           ),
           Expanded(
@@ -94,8 +94,9 @@ class ScanResultTile extends StatelessWidget {
     return ExpansionTile(
       title: _buildTitle(context),
       leading: Text(result.rssi.toString()),
+      // ignore: deprecated_member_use
       trailing: RaisedButton(
-        child: Text('연결'),
+        child: const Text('연결'),
         color: Colors.deepPurple,
         textColor: Colors.white,
         onPressed: (result.advertisementData.connectable) ? onTap : null,
@@ -130,13 +131,13 @@ class ServiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (characteristicTiles.length > 0) {
+    if (characteristicTiles.isNotEmpty) {
       return ExpansionTile(
         title: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Service'),
+            const Text('Service'),
             Text('0x${service.uuid.toString().toUpperCase().substring(4, 8)}',
                 style: Theme.of(context).textTheme.body1?.copyWith(
                     color: Theme.of(context).textTheme.caption?.color))
@@ -146,7 +147,7 @@ class ServiceTile extends StatelessWidget {
       );
     } else {
       return ListTile(
-        title: Text('Service'),
+        title: const Text('Service'),
         subtitle:
         Text('0x${service.uuid.toString().toUpperCase().substring(4, 8)}'),
       );
@@ -183,7 +184,7 @@ class CharacteristicTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('Characteristic'),
+                const Text('Characteristic'),
                 Text(
                     '0x${characteristic.uuid.toString().toUpperCase().substring(4, 8)}',
                     style: Theme.of(context).textTheme.body1?.copyWith(
@@ -191,7 +192,7 @@ class CharacteristicTile extends StatelessWidget {
               ],
             ),
             subtitle: Text(value.toString()),
-            contentPadding: EdgeInsets.all(0.0),
+            contentPadding: const EdgeInsets.all(0.0),
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -244,7 +245,7 @@ class DescriptorTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Descriptor'),
+          const Text('Descriptor'),
           Text('0x${descriptor.uuid.toString().toUpperCase().substring(4, 8)}',
               style: Theme.of(context)
                   .textTheme
@@ -292,11 +293,11 @@ class AdapterStateTile extends StatelessWidget {
       child: ListTile(
         title: Text(
           'Bluetooth adapter is ${state.toString().substring(15)}',
-          style: Theme.of(context).primaryTextTheme.subhead,
+          style: Theme.of(context).primaryTextTheme.subtitle1,
         ),
         trailing: Icon(
           Icons.error,
-          color: Theme.of(context).primaryTextTheme.subhead?.color,
+          color: Theme.of(context).primaryTextTheme.subtitle1?.color,
         ),
       ),
     );

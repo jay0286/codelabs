@@ -1,17 +1,16 @@
+// ignore: file_names
 import 'dart:async';
 
-import '/constant/constant.dart';
 //import '/pages/login_signup/login.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-
 import 'package:gtk_flutter/main.dart';
-
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';           // new
 
-import 'package:firebase_core/firebase_core.dart'; // new
-import 'package:firebase_auth/firebase_auth.dart'; // new
+import '/constant/constant.dart';
+
+// new
+// new
 
 
 
@@ -27,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
 
     Timer(
-        Duration(seconds: 4),
+        const Duration(seconds: 4),
             () => Navigator.push(
           context,
           MaterialPageRoute(builder: (context) =>     ChangeNotifierProvider(
@@ -60,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               heightSpace,
               heightSpace,
-              SpinKitPulse(
+              const SpinKitPulse(
                 color: Colors.deepPurple,//primaryColor,
                 size: 50.0,
               ),

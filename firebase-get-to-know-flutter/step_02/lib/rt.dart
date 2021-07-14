@@ -185,7 +185,7 @@ class _ExampleAppState extends State<ExampleApp> {
   FutureBuilder<int> getLocalFileDuration() {
     return FutureBuilder<int>(
       future: _getDuration(),
-      builder: (BuildContext context, AsyncSnapshot<int> snapshot) {
+      builder: (context, snapshot) {
         switch (snapshot.connectionState) {
           case ConnectionState.none:
             return const Text('No Connection...');

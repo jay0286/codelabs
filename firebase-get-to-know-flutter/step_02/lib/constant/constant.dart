@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-Color scaffoldBgColor = Color(0xFFF4F4F4);
-Color primaryColor = Color(0xFFF2647C);
-Color darkPrimaryColor = Color(0xFFCA445D);
+Color scaffoldBgColor = const Color(0xFFF4F4F4);
+Color primaryColor = const Color(0xFFF2647C);
+Color darkPrimaryColor = const Color(0xFFCA445D);
 Color greyColor = Colors.grey;
 Color whiteColor = Colors.white;
 Color blackColor = Colors.black;
@@ -10,8 +10,8 @@ Color lightGreyColor = Colors.grey.withOpacity(0.3);
 
 double fixPadding = 10.0;
 
-SizedBox heightSpace = SizedBox(height: 10.0);
-SizedBox widthSpace = SizedBox(width: 10.0);
+SizedBox heightSpace = const SizedBox(height: 10.0);
+SizedBox widthSpace = const SizedBox(width: 10.0);
 
 TextStyle bottomBarItemStyle = TextStyle(
   color: greyColor,
@@ -48,7 +48,7 @@ TextStyle greyHeadingStyle = TextStyle(
   fontWeight: FontWeight.w500,
 );
 
-TextStyle deepPurpleHeadingStyle = TextStyle(
+TextStyle deepPurpleHeadingStyle = const TextStyle(
   fontSize: 15.0,
   color: Colors.deepPurple,
   fontFamily: 'Roboto',
@@ -56,7 +56,7 @@ TextStyle deepPurpleHeadingStyle = TextStyle(
 );
 
 
-TextStyle blueTextStyle = TextStyle(
+TextStyle blueTextStyle = const TextStyle(
   fontSize: 18.0,
   color: Colors.blue,
   fontFamily: 'Roboto',
