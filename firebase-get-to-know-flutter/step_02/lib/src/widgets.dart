@@ -1,15 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import '/constant/constant.dart';
 
 class Header extends StatelessWidget {
   const Header(this.heading);
   final String heading;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(
+  Widget build(BuildContext context) =>
+      /*Container(
+        margin:  EdgeInsets.all(fixPadding * 0.5),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
+        //alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: Colors.deepPurple,
+          //color: Colors.white,
+          borderRadius: BorderRadius.circular(10.0),
+          /*boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.2),
+                                    spreadRadius: 0,
+                                    blurRadius: 5,
+                                    offset: Offset(0,2),
+                                  ),
+                                ],*/
+        ),
+        child: Text(heading,
+          style:TextStyle(
+            fontSize: ScreenUtil().setSp(18),
+            color: Colors.white,
+            fontWeight: FontWeight.w700 ,
+          ),
+          //style: white16BoldTextStyle,
+        ),
+      );*/
+
+      Padding(
+        padding: const EdgeInsets.only(left: 15.0,top: 1, bottom: 1),
+        child:
+        Text(
           heading,
-          style: const TextStyle(fontSize: 24),
+          style:  TextStyle(fontSize: ScreenUtil().setWidth(15),fontWeight: FontWeight.bold),
         ),
       );
 }
@@ -34,14 +67,14 @@ class IconAndDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.only(left: 10.0,top: 2),
         child: Row(
           children: [
-            Icon(icon),
-            const SizedBox(width: 8),
+            Icon(icon,size: ScreenUtil().setWidth(18),),
+            const SizedBox(width: 8), //ScreenUtil().setWidth(8)
             Text(
               detail,
-              style: const TextStyle(fontSize: 18),
+              style:  TextStyle(fontSize: ScreenUtil().setSp(16)),
             )
           ],
         ),

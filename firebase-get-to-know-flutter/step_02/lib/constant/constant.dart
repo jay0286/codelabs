@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-Color scaffoldBgColor = const Color(0xFFF4F4F4);
+Color scaffoldBgColor = const Color(0xFFefefef);
 Color primaryColor = const Color(0xFFF2647C);
 Color darkPrimaryColor = const Color(0xFFCA445D);
 Color greyColor = Colors.grey;
 Color whiteColor = Colors.white;
 Color blackColor = Colors.black;
-Color lightGreyColor = Colors.grey.withOpacity(0.3);
+Color lightGreyColor = Colors.white.withOpacity(0.5);
 
 double fixPadding = 10.0;
 
