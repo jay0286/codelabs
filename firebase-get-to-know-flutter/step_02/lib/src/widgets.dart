@@ -38,7 +38,7 @@ class Header extends StatelessWidget {
       );*/
 
       Padding(
-        padding: const EdgeInsets.only(left: 15.0,top: 1, bottom: 1),
+        padding: const EdgeInsets.only(left: 15.0,top: 0, bottom: 0),
         child:
         Text(
           heading,
@@ -70,11 +70,11 @@ class IconAndDetail extends StatelessWidget {
         padding: const EdgeInsets.only(left: 10.0,top: 2),
         child: Row(
           children: [
-            Icon(icon,size: ScreenUtil().setWidth(18),),
+            Icon(icon,size: ScreenUtil().setWidth(16),),
             const SizedBox(width: 8), //ScreenUtil().setWidth(8)
             Text(
               detail,
-              style:  TextStyle(fontSize: ScreenUtil().setSp(16)),
+              style:  TextStyle(fontSize: ScreenUtil().setSp(15)),
             )
           ],
         ),

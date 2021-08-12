@@ -34,12 +34,17 @@ import 'src/authentication.dart';                  // new
 import 'src/widgets.dart';
 import 'widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:restart_app/restart_app.dart';
+
 
 final logger = SimpleLogger();
 
 
+List<AccidentMessage> get iaLogMessages => _iaLogMessages;
 List<AccidentMessage> _iaLogMessages = [];
+List<AccidentMessage> get ffLogMessages => _ffLogMessages;
 List<AccidentMessage> _ffLogMessages = [];
+List<AccidentMessage> get imLogMessages => _imLogMessages;
 List<AccidentMessage> _imLogMessages = [];
 List<AccidentMessage> get emLogMessages => _emLogMessages;
 List<AccidentMessage> _emLogMessages = [];
@@ -57,7 +62,6 @@ List<AccidentMessage> get etcLogMessages => _etcLogMessages;
 List<AccidentMessage> _etcLogMessages = [];
 
 BluetoothDeviceState? btState =BluetoothDeviceState.disconnected;
-
 
 
 class Profile extends StatelessWidget {
@@ -203,12 +207,12 @@ class Profile extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            displayName!,
+                            displayName,
                             style: headingStyle,
                           ),
                           heightSpace,
                           Text(
-                            displayEmail!,
+                            displayEmail,
                             style: lightGreyStyle,
                           ),
                         ],
@@ -349,10 +353,12 @@ class Profile extends StatelessWidget {
 bool logState = false;
 bool beltState = false;
 
-String? logEmail ;
-String? displayName = '무명';
-String? displayEmail = '없음';
+String displayName = '무명';
+String displayEmail = '없음';
 String? displayPhoneNumber = '없음';
+String workZone = '없음';
+String role = '없음';
+String iuserId = '없음';
 
 DateTime? timeToWorkStart ;
 
@@ -483,10 +489,6 @@ class _ShowDataLogerScreenState extends State<ShowDataLogerScreen> {
     super.initState();
   }
 
-  List<AccidentMessage> get iaLogMessages => _iaLogMessages;
-  List<AccidentMessage> get ffLogMessages => _ffLogMessages;
-  List<AccidentMessage> get imLogMessages => _imLogMessages;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -518,6 +520,7 @@ class _ShowDataLogerScreenState extends State<ShowDataLogerScreen> {
                       iaLogMessages,
                      weekCount: 0,
                     isName:true,
+                    isPosition:true,
                   ),
                 ],
               ],
@@ -808,6 +811,18 @@ void _setLoopMode(LoopMode mode) {
 
 
 
+void setMylocation(String uid, GeoPoint location) {
+
+  final userDoc =  FirebaseFirestore.instance
+      .collection('user')
+      .doc(uid);
+  userDoc.update({'geopoint': location});
+}
+
+
+
+
+
 Future<DocumentReference> addStateToGuestBook(String message) {
   message = message;
 
@@ -914,8 +929,8 @@ class _WorkerListState extends State<WorkerList> {
                   Navigator.push(context, MaterialPageRoute(
                       builder: (context) =>
                           WorkerDetailPage(
-                              latitude: 0/*37.4836*/,
-                              longitude: 0/*126.8954*/,
+                              latitude: geolatitude/*37.4836*/,
+                              longitude: geolongitude/*126.8954*/,
                               uid: item.uid,
                               state: '상태')));
                 },
@@ -999,15 +1014,30 @@ class _WorkerListState extends State<WorkerList> {
   }
 }
 
-
 class WorkerListMessage {
-  WorkerListMessage({required this.name, required this.uid});
+  WorkerListMessage({
+    required this.name,
+    required this.uid,
+    required this.workzone,
+    required this.role,
+    required this.belt,
+    required this.worktime,
+    required this.location,
+    required this.accident
+  });
   final String name;
   final String uid;
+  final String workzone;
+  final String role;
+  final bool belt;
+  final DateTime worktime;
+  final GeoPoint location;
+  final int accident;
 }
 
 class AccidentMessage {
-  AccidentMessage({required this.name, required this.message, required this.date, required this.time,required this.location, required this.timestamp});
+  AccidentMessage({required this.uid, required this.name, required this.message, required this.date, required this.time,required this.location, required this.timestamp});
+  final String uid;
   final String name;
   final String message;
   final String date;
@@ -1017,10 +1047,11 @@ class AccidentMessage {
 }
 
 class AccidentList extends StatefulWidget {
-  const AccidentList({ required this.messages, required this.weekCount, required this.isName});
+  const AccidentList({ required this.messages, required this.weekCount, required this.isName, required this.isPosition});
   final List<AccidentMessage> messages; // new
   final int? weekCount;
   final bool? isName;
+  final bool? isPosition;
 
   @override
   _AccidentListState createState() => _AccidentListState();
@@ -1030,12 +1061,13 @@ class _AccidentListState extends State<AccidentList> {
   @override
   Widget build(BuildContext context) {
     return  Container(
+      height : 180,
       margin:  EdgeInsets.only(left:fixPadding * 0.5,right:fixPadding * 0.5),
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 0),
       //alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10.0),
+        borderRadius: BorderRadius.circular(6.0),
         /*boxShadow: [
                               BoxShadow(
                                 color: Colors.grey.withOpacity(0.2),
@@ -1057,28 +1089,33 @@ class _AccidentListState extends State<AccidentList> {
             return Container(); //jaytodo
           } else {
             return Consumer<ApplicationState>(
-              builder: (context, appState, _) =>InkWell(
-                  child: accidentDetail(
-                      item.date, item.time, (widget.isName==true)?item.name:item.message, item.location, Colors.black
-                  ),
-                  onTap: () {
-                    List<String> strLocation;
-                    strLocation= item.location.split(', ');
-                    LatLng positiona;
-                    positiona = LatLng(double.parse(strLocation[0]),double.parse(strLocation[1])) ;
-                    appState.setpositionA(positiona);
+              builder: (context, appState, _) {
+                if(item.message=='지도노티'||item.message=='턱끈연결'||item.message=='턱끈해제' ||(role!='manager')&&(item.message=='연결해제'||item.message=='연결복귀')) //jay todo 210812: 좀더 최적화 해야 하지 않을까?
+                  return Container();
+                else
+                  return InkWell(
+                    child: accidentDetail(
+                        item.date, item.time, (widget.isName==true)?item.name:item.message,  (widget.isPosition==true)?item.location :item.message, Colors.black
+                    ),
+                    onTap: () {
+                      List<String> strLocation;
+                      strLocation= item.location.split(', ');
+                      LatLng positiona;
+                      positiona = LatLng(double.parse(strLocation[0]),double.parse(strLocation[1])) ;
+                      appState.setpositionA(positiona);
 
-/*
-                    Navigator.push(context, MaterialPageRoute(
-                        builder: (context) =>
-                            WorkerDetailPage(latitude: 37.4219983,
-                                longitude: -122.084,
-                                name: 'tt',
-                                state: '상태')));
-                                */
+  /*
+                      Navigator.push(context, MaterialPageRoute(
+                          builder: (context) =>
+                              WorkerDetailPage(latitude: 37.4219983,
+                                  longitude: -122.084,
+                                  name: 'tt',
+                                  state: '상태')));
+   */
 
-                  }
-              ),
+                    }
+                );
+              }
             );
           }
         },
@@ -1376,6 +1413,12 @@ class _GuestBookState extends State<GuestBook> {
 
 final scaffoldKey = GlobalKey<ScaffoldState>();
 
+
+
+bool _attendeesFirst = false;
+bool get  attendeesFirst=> _attendeesFirst;
+
+
 int _attendees = 0;
 int get attendees => _attendees;
 
@@ -1545,7 +1588,8 @@ class ApplicationState extends ChangeNotifier {
                   // height: 50,
                   child:Padding(
                     padding: const EdgeInsets.only(left: 20,right: 20),
-                    child: (State!='연결해제'||(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com'))?ElevatedButton(
+                    //child: (State!='연결해제'||(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com'))?ElevatedButton(
+                    child: (State!='연결해제'||role=='manager')?ElevatedButton(
                       child: const Text('확인'),
                       style: ElevatedButton.styleFrom(
                           primary: Colors.deepOrange,
@@ -1638,12 +1682,13 @@ class ApplicationState extends ChangeNotifier {
     await Firebase.initializeApp();
 
     listenUser?.cancel();
-    listenUser= FirebaseAuth.instance.userChanges().listen((user) async {
+    listenUser= FirebaseAuth.instance.userChanges().distinct((p, n) => p?.uid == n?.uid).listen((user) async {
       logger.warning('FireStore[FirebaseAuth] -------- userChanges()');
       if (user != null) {
         displayPhoneNumber = user.phoneNumber;
-        displayName = user.displayName;
-        displayEmail = user.email;
+        displayName = user.displayName!;
+        displayEmail = user.email!;
+        iuserId = user.uid;
         logger.warning(user.email);
         logger.warning(user.displayName);
         logger.warning(user.phoneNumber);
@@ -1651,9 +1696,17 @@ class ApplicationState extends ChangeNotifier {
         //print(timeToWorkStart);
         logState = true;
         _loginState = ApplicationLoginState.loggedIn;
-        // Add from here
-        logEmail =user.email;
-        if(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') {
+
+        await FirebaseFirestore.instance
+            .collection('user')
+            .where('uid',isEqualTo:user.uid) //jay user
+            .get().then((value){
+              workZone = (value.docs[0].data()['workZone']!=null)?value.docs[0].data()['workZone']:'기본';
+              role = (value.docs[0].data()['role']!=null)?value.docs[0].data()['role']:'worker' ;
+            });
+
+        if(role=='manager') {
+        //if(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') {
 /*
             await FirebaseFirestore.instance
                 .collection("guestbook")
@@ -1668,51 +1721,348 @@ class ApplicationState extends ChangeNotifier {
               });
             });
 */
-            _attendeesia=0;
-            listenIa?.cancel();
-            listenIa = FirebaseFirestore.instance
-                .collection('guestbook')
-                .where('text',isEqualTo:'무활동반응') //jay user
-                .orderBy("timestamp", descending: true)
-                .snapshots()
-                .listen((snapshot) {
-                  _iaLogMessages = [];
-                  int lastone=0;
-                  snapshot.docs.forEach((document) {
-                    DateTime date = DateTime.fromMillisecondsSinceEpoch(document.data()['timestamp']);
-                    String formattedDate = DateFormat('MM월dd일').format(date);
-                    String formattedTime = DateFormat('HH시mm분').format(date);
-                    if(lastone==0) {
-                      lastone=1;
-                      logger.warning('FireStore[read] -------- 무활동반응');
-                      logger.warning(snapshot.docs.length);
-                      if(_attendeesia>0) {
-                        logger.warning('stored:'+document.data()['timestamp']);
-                        logger.warning('now: $DateTime.now().millisecondsSinceEpoch');
-                        _stopSound();
-                        _setAsset('assets/audio/alram1.mp3');
-                        _setLoopMode(LoopMode.one);
-                        _playSound();
-                        addNPopupManager(document.data()['name'],formattedDate+formattedTime,'무활동반응',300);
-                      }
-                      _attendeesia = snapshot.docs.length;
-                    }
+          listenWorker?.cancel();
+          listenWorker = FirebaseFirestore.instance
+              .collection('user')
+              .snapshots()
+              .listen((snapshot) {
+            _workerLogMessages = [];
+            _attendeesworker = snapshot.docs.length;
+            logger.warning('FireStore[read] -------- worker list:' + _attendeesworker.toString());
+            snapshot.docs.forEach((document) {
 
-                    _iaLogMessages.add(
-                      AccidentMessage(
-                        name: document.data()['name'],
-                        time:formattedTime,
-                        message: document.data()['text'],
-                        date: formattedDate,
-                        location: document.data()['latitude'].toString() + ', ' +
-                            document.data()['longitude'].toString(),
-                        timestamp: date,
-                      ),
-                    );
-                  });
-                  notifyListeners();
+              logger.warning(document.data()['name'].toString());
+              _workerLogMessages.add(
+                WorkerListMessage(
+                    name: document.data()['name'],
+                    uid: document.data()['uid'],
+                    workzone: (document.data()['workzone']==null)?'none':document.data()['workzone'],
+                    role: (document.data()['role']==null)?'none':document.data()['role'],
+                    belt: (document.data()['belt']==null)?false:document.data()['belt'],
+                    worktime: (document.data()['worktime']==null)?0:document.data()['worktime'],
+                    location: (document.data()['location']==null)?'none':document.data()['location'],
+                    accident: (document.data()['accident']==null)?'none':document.data()['accident']
+                ),
+              );
+            });
+            notifyListeners();
+          });
+
+          await FirebaseFirestore.instance
+              .collection('guestbook')
+              .orderBy('timestamp', descending: true)
+              .get().then((value){
+                logger.warning('FireStore[read] -------- 모든 데이터');
+                _accidentMessages = [];
+                value.docs.forEach((document) {
+                  DateTime date = DateTime.fromMillisecondsSinceEpoch(document.data()['timestamp']);
+                  String formattedDate = DateFormat('MM월dd일').format(date);
+                  String formattedTime = DateFormat('HH시mm분').format(date);
+                  _accidentMessages.add(
+                    AccidentMessage(
+                      uid: document.data()['userId'],
+                      name: document.data()['name'],
+                      time:formattedTime,
+                      message: document.data()['text'],
+                      date: formattedDate,
+                      location: document.data()['latitude'].toString() + ', ' +
+                          document.data()['longitude'].toString(),
+                      timestamp: date,
+                    ),
+                  );
                 });
 
+                _iaLogMessages =[];
+                _iaLogMessages =
+                    _accidentMessages.where((element) => element.message.startsWith('무활동반응')).toList();
+                _attendeesia = _iaLogMessages.length;
+                print('무활동반응 num:'+_attendeesia.toString());
+
+                _ffLogMessages =[];
+                _ffLogMessages =
+                    _accidentMessages.where((element) => element.message.startsWith('추락사고')).toList();
+                _attendeesff = _ffLogMessages.length;
+                print('추락사고 num:'+_attendeesff.toString());
+
+                _imLogMessages =[];
+                _imLogMessages =
+                    _accidentMessages.where((element) => element.message.startsWith('충격사고')).toList();
+                _attendeesim = _imLogMessages.length;
+                print('충격사고 num:'+_attendeesim.toString());
+
+                _emLogMessages =[];
+                _emLogMessages =
+                    _accidentMessages.where((element) => element.message.startsWith('위급상황')).toList();
+                _attendeesem = _emLogMessages.length;
+                print('위급상황 num:'+_attendeesem.toString());
+
+                _uemLogMessages =[];
+                _uemLogMessages =
+                    _accidentMessages.where((element) => element.message.startsWith('상황해제')).toList();
+                _attendeesemrels = _uemLogMessages.length;
+                print('상황해제 num:'+_attendeesemrels.toString());
+
+/*
+                _uemLogMessages =[];
+                _uemLogMessages =
+                    _accidentMessages.where((element) => element.message.startsWith('지도노티')).toList();
+                _attendeesmap = _uemLogMessages.length;
+                print('num:'+_attendeesmap.toString());
+*/
+
+              _ucnLogMessages =[];
+              _ucnLogMessages =
+                  _accidentMessages.where((element) => element.message.startsWith('연결해제')).toList();
+              _attendeesoffline = _ucnLogMessages.length;
+              print('연결해제 num:'+_attendeesoffline.toString());
+
+              _rcnLogMessages =[];
+              _rcnLogMessages =
+                  _accidentMessages.where((element) => element.message.startsWith('연결복귀')).toList();
+              _attendeesRecorvline = _rcnLogMessages.length;
+              print('해제복귀 num:'+_attendeesRecorvline.toString());
+
+
+              _beltLogMessages =[];
+              _beltLogMessages =
+                  _accidentMessages.where((element) => element.message.startsWith('턱끈연결')).toList();
+              _attendeesbelt = _beltLogMessages.length;
+              print('턱끈연결 num:'+_attendeesbelt.toString());
+
+
+              _ubeltLogMessages =[];
+              _ubeltLogMessages =
+                  _accidentMessages.where((element) => element.message.startsWith('턱끈해제')).toList();
+              _attendeesDissbelt = _ubeltLogMessages.length;
+              print('턱끈해제 num:'+_attendeesDissbelt.toString());
+
+
+              _etcLogMessages =[];
+              _etcLogMessages =
+                  _accidentMessages.where((element) => element.message.startsWith('김타등등')).toList();
+              _attendeesetc = _etcLogMessages.length;
+              print('기타등등 num:'+_attendeesetc.toString());
+
+              notifyListeners();
+              });
+
+          _guestBookSubscription?.cancel();
+          _guestBookSubscription = FirebaseFirestore.instance
+              .collection('guestbook')
+              .orderBy('timestamp', descending: true)
+              .limit(1)
+              .snapshots()
+              .listen((snapshot) {
+                if(attendeesFirst==true) {
+                  DateTime date = DateTime.fromMillisecondsSinceEpoch(
+                      snapshot.docs[0].data()['timestamp']);
+                  String formattedDate = DateFormat('MM월dd일').format(date);
+                  String formattedTime = DateFormat('HH시mm분').format(date);
+                  String uid = snapshot.docs[0].data()['userId'];
+                  String name = snapshot.docs[0].data()['name'];
+                  String message = snapshot.docs[0].data()['text'];
+                  String location = snapshot.docs[0].data()['latitude'].toString() +
+                      ', ' +
+                      snapshot.docs[0].data()['longitude'].toString();
+                  logger.warning('FireStore[listen all] -------- [' +
+                      snapshot.docs.length.toString() + '] ' + name + ': ' + message);
+
+                  AccidentMessage thisTime = AccidentMessage(
+                    uid: uid,
+                    name: name,
+                    time: formattedTime,
+                    date: formattedDate,
+                    message: message,
+                    location: location,
+                    timestamp: date,
+                  );
+
+                  _accidentMessages.insert(
+                    0,
+                    thisTime,
+                  );
+                  logger.warning('acc' + _accidentMessages.length.toString());
+                  if (message == '무활동반응') {
+                    _iaLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    _attendeesia++;
+                    if (thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                        DateTime.now())) {
+                      _stopSound();
+                      _setAsset('assets/audio/alram1.mp3');
+                      _setLoopMode(LoopMode.one);
+                      _playSound();
+                      addNPopupManager(
+                          thisTime.name, formattedDate + formattedTime,
+                          '무활동반응', 300);
+                    }
+                  } else if (message == '추락사고') {
+                    _ffLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    if (thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                        DateTime.now())) {
+                      _stopSound();
+                      _setAsset('assets/audio/alram1.mp3');
+                      _setLoopMode(LoopMode.one);
+                      _playSound();
+                      addNPopupManager(
+                          thisTime.name, formattedDate + formattedTime,
+                          '추락사고', 300);
+                    }
+                  } else if (message == '충격사고') {
+                    _imLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    if (thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                        DateTime.now())) {
+                      _stopSound();
+                      _setAsset('assets/audio/alram1.mp3');
+                      _setLoopMode(LoopMode.one);
+                      _playSound();
+                      addNPopupManager(
+                          thisTime.name, formattedDate + formattedTime,
+                          '충격사고', 300);
+                    }
+                  } else if (message == '위급상황') {
+                    _emLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    if (thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                        DateTime.now())) {
+                      _stopSound();
+                      _setAsset('assets/audio/alram1.mp3');
+                      _setLoopMode(LoopMode.one);
+                      _playSound();
+                      addNPopupManager(
+                          thisTime.name, formattedDate + formattedTime,
+                          '위급상황', 300);
+                    }
+                  } else if (message == '상황해제') {
+                    _uemLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    if (thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                        DateTime.now())) {
+                      _stopSound();
+                      _setAsset('assets/audio/alram1.mp3');
+                      _setLoopMode(LoopMode.one);
+                      _playSound();
+                      addNPopupManager(
+                          thisTime.name, formattedDate + formattedTime,
+                          '상황해제', 300);
+                    }
+                  } else if (message == '지도노티') {
+                    FirebaseFirestore.instance.collection("guestbook").doc(snapshot.docs[0].id).delete().then((value){
+                      logger.warning("지도노티 delete Success!");
+                    });
+                    List<String> strLocation;
+                    strLocation = location.split(', ');
+                    Navigator.push(navigatorKey.currentContext!, MaterialPageRoute(
+                        builder: (context) =>
+                            Second(latitude: double.parse(strLocation[0]), longitude: double.parse(strLocation[1]))));
+                  } else if (message == '연결해제') {
+                    _ucnLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    if (thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                        DateTime.now())) {
+                      _stopSound();
+                      _setAsset('assets/audio/alram1.mp3');
+                      _setLoopMode(LoopMode.one);
+                      _playSound();
+                      addNPopupManager(
+                          thisTime.name, formattedDate + formattedTime,
+                          '연결해제', 300);
+                    }
+                  } else if (message == '연결복귀') {
+                    _rcnLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    if (thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                        DateTime.now())) {
+                      _stopSound();
+                      _setAsset('assets/audio/alram1.mp3');
+                      _setLoopMode(LoopMode.one);
+                      _playSound();
+                      addNPopupManager(
+                          thisTime.name, formattedDate + formattedTime,
+                          '연결복귀', 300);
+                    }
+                  } else if (message == '턱끈연결') {
+                    _beltLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    _attendeesbelt++;
+                  } else if (message == '턱끈해제') {
+                    _ubeltLogMessages.insert(
+                      0,
+                      thisTime,
+                    );
+                    _attendeesDissbelt++;
+                  }
+                  notifyListeners();
+                } else {
+                  _attendeesFirst = true;
+                }
+              });
+
+/*
+
+          _attendeesia=0;
+          listenIa?.cancel();
+          listenIa = FirebaseFirestore.instance
+              .collection('guestbook')
+              .where('text',isEqualTo:'무활동반응') //jay user
+              .orderBy("timestamp", descending: true)
+              .snapshots()
+              .listen((snapshot) {
+                _iaLogMessages = [];
+                int lastone=0;
+                snapshot.docs.forEach((document) {
+                  DateTime date = DateTime.fromMillisecondsSinceEpoch(document.data()['timestamp']);
+                  String formattedDate = DateFormat('MM월dd일').format(date);
+                  String formattedTime = DateFormat('HH시mm분').format(date);
+                  if(lastone==0) {
+                    lastone=1;
+                    logger.warning('FireStore[read] -------- 무활동반응');
+                    logger.warning(snapshot.docs.length);
+                    if(_attendeesia>0) {
+                      logger.warning('stored:'+document.data()['timestamp']);
+                      logger.warning('now: $DateTime.now().millisecondsSinceEpoch');
+                      _stopSound();
+                      _setAsset('assets/audio/alram1.mp3');
+                      _setLoopMode(LoopMode.one);
+                      _playSound();
+                      addNPopupManager(document.data()['name'],formattedDate+formattedTime,'무활동반응',300);
+                    }
+                    _attendeesia = snapshot.docs.length;
+                  }
+
+                  _iaLogMessages.add(
+                    AccidentMessage(
+                      uid: document.data()['userId'],
+                      name: document.data()['name'],
+                      time:formattedTime,
+                      message: document.data()['text'],
+                      date: formattedDate,
+                      location: document.data()['latitude'].toString() + ', ' +
+                          document.data()['longitude'].toString(),
+                      timestamp: date,
+                    ),
+                  );
+                });
+                notifyListeners();
+              });
 
             _attendeesff=0;
             listenFf?.cancel();
@@ -1743,6 +2093,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _ffLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -1786,6 +2137,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _imLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -1798,6 +2150,7 @@ class ApplicationState extends ChangeNotifier {
                   });
                   notifyListeners();
                 });
+
 
 
             _attendeesem=0;
@@ -1829,6 +2182,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _emLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -1871,6 +2225,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _uemLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -1914,6 +2269,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _emLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -1937,7 +2293,7 @@ class ApplicationState extends ChangeNotifier {
                 .listen((snapshot) {
                   logger.warning('FireStore[read] -------- 지도노티');
                   logger.warning(snapshot.docs.length);
-                  //_mapNotyMessages = [];
+                  _mapNotyMessages = [];
                   int lastone=0;
                   snapshot.docs.forEach((document) {
                     if(lastone==0) {
@@ -1966,6 +2322,7 @@ class ApplicationState extends ChangeNotifier {
                   });
                   notifyListeners();
                 });
+
 
 
             _attendeesoffline=0;
@@ -1999,6 +2356,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _ucnLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -2052,6 +2410,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _rcnLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -2065,6 +2424,8 @@ class ApplicationState extends ChangeNotifier {
                   notifyListeners();
                 });
 
+ */
+/*
             _attendeesbelt=0;
             listenBelt?.cancel();
             listenBelt = FirebaseFirestore.instance
@@ -2096,6 +2457,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _beltLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -2108,6 +2470,8 @@ class ApplicationState extends ChangeNotifier {
                   });
                   notifyListeners();
                 });
+
+
 
             _attendeesDissbelt=0;
             listenUBelt?.cancel();
@@ -2141,6 +2505,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _ubeltLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -2196,6 +2561,7 @@ class ApplicationState extends ChangeNotifier {
                     }
                     _etcLogMessages.add(
                       AccidentMessage(
+                        uid: document.data()['userId'],
                         name: document.data()['name'],
                         time:formattedTime,
                         message: document.data()['text'],
@@ -2218,7 +2584,9 @@ class ApplicationState extends ChangeNotifier {
                   notifyListeners();
                 });
 
+ */
 
+/*
             _guestBookSubscription?.cancel();
             _guestBookSubscription = FirebaseFirestore.instance
                 .collection('guestbook')
@@ -2235,6 +2603,7 @@ class ApplicationState extends ChangeNotifier {
                 //_guestBookMessages.add(
                 _accidentMessages.add(
                   AccidentMessage(
+                      uid: document.data()['userId'],
                     name: document.data()['name'],
                     time:formattedTime,
                     message: document.data()['text'],
@@ -2279,7 +2648,7 @@ class ApplicationState extends ChangeNotifier {
               notifyListeners();
             });
 
-
+*/
               /*
             _workerBookSubscription?.cancel();
             _workerBookSubscription = FirebaseFirestore.instance
@@ -2372,6 +2741,7 @@ class ApplicationState extends ChangeNotifier {
                 //_guestBookMessages.add(
                 _accidentMessages.add(
                   AccidentMessage(
+                    uid: document.data()['userId'],
                       name: document.data()['name'],
                       time:formattedTime,
                       message: document.data()['text'],
@@ -2404,23 +2774,24 @@ class ApplicationState extends ChangeNotifier {
         logger.warning('logout ');
         bTdevice?.disconnect();
         logState = false;
-        logEmail='사용자 정보없음';
         _loginState = ApplicationLoginState.loggedOut;
         _guestBookMessages = [];
         _guestBookSubscription?.cancel();
         notifyListeners();
+       // Restart.restartApp();
       }
     });
   }
 
-  LatLng? _positonA ;
+  LatLng? _positonA  = LatLng(0,0);
   StreamSubscription<DocumentSnapshot>? _positionSubscription;
-  LatLng get positionA => _positonA!;
+  LatLng? get positionA => _positonA;
 
   void setpositionA( LatLng latLng) {
     _positonA =latLng;
     notifyListeners();
   }
+
 
 
   Attending _attending = Attending.unknown;
@@ -2726,7 +3097,7 @@ Widget accidentName( String state){
 }
 class AccidentDetailwithTimeStamp extends StatelessWidget {
   AccidentDetailwithTimeStamp({required this.timestamp, required this.str1, required this.str2, required this.str3, required this.str4, required this.color});
-  int timestamp;
+  DateTime timestamp;
   String str1;
   String str2;
   String str3;
@@ -2735,11 +3106,10 @@ class AccidentDetailwithTimeStamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if(timestamp!=0) {
-      DateTime date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-      str1 = DateFormat('MM월dd일').format(date);
-      str2 = DateFormat('HH시mm분').format(date);
-    }
+
+      str1 = DateFormat('MM월dd일').format(timestamp);
+      str2 = DateFormat('HH시mm분').format(timestamp);
+
     return accidentDetail( str1,  str2,  str3,  str4,  color );
   }
 }
@@ -2751,12 +3121,12 @@ Widget accidentDetail( String str1, String str2, String str3, String str4, Color
     child: Row(
       children: [
         Expanded(
-          flex: 2,
+          flex: 3,
             child: Container(
               alignment: Alignment.center,
               child: Text(str1,
                 style:TextStyle(
-                  //fontSize: ScreenUtil().setSp(18),
+                  fontSize: ScreenUtil().setSp(16),
                   color: color,
                   //fontWeight: FontWeight.w700 ,
                 ),
@@ -2764,12 +3134,12 @@ Widget accidentDetail( String str1, String str2, String str3, String str4, Color
             ),
         ),
         Expanded(
-            flex: 2,
+            flex: 3,
             child: Container(
               alignment: Alignment.center,
                 child: Text(str2,
                   style:TextStyle(
-                    //fontSize: ScreenUtil().setSp(18),
+                    fontSize: ScreenUtil().setSp(16),
                     color: color,
                     //fontWeight: FontWeight.w700 ,
                   ),
@@ -2777,12 +3147,12 @@ Widget accidentDetail( String str1, String str2, String str3, String str4, Color
             )
         ),
         Expanded(
-          flex: 2,
+          flex: 3,
             child: Container(
                 alignment: Alignment.center,
                 child: Text(str3,
                   style:TextStyle(
-                    //fontSize: ScreenUtil().setSp(18),
+                    fontSize: ScreenUtil().setSp(16),
                     color: color,
                     //fontWeight: FontWeight.w700 ,
                   ),
@@ -2790,12 +3160,13 @@ Widget accidentDetail( String str1, String str2, String str3, String str4, Color
             ),
         ),
         Expanded(
-          flex: 3,
+          flex: 4,
           child: Container(
             alignment: Alignment.center,
-            child: Text('위도:'+str4.replaceAll(', ', '\n경도:') ,
+            //child: Text('위도:'+str4.replaceAll(', ', '\n경도:') ,
+            child: Text(str4,
               style:TextStyle(
-                fontSize: ScreenUtil().setSp(12),
+                fontSize: ScreenUtil().setSp(16),
                 color: color,
                 //fontWeight: FontWeight.w700 ,
               ),
@@ -2823,59 +3194,16 @@ class HomePersonalInfo extends StatefulWidget {
 }
 
 class _HomePersonalInfoState extends State<HomePersonalInfo> {
-  Widget addNewBeneficiaryButton(){
-    return InkWell(
-      child: Container(
-        margin:  EdgeInsets.all(fixPadding * 0.5),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        alignment: Alignment.center,
-        //alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          color: Colors.deepPurple,
-          //color: Colors.white,
-          borderRadius: BorderRadius.circular(10.0),
-          /*boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2),
-                                spreadRadius: 0,
-                                blurRadius: 5,
-                                offset: Offset(0,2),
-                              ),
-                            ],*/
-        ),
-        child: Text('종합 사고 상황',
-          style:TextStyle(
-            fontSize: ScreenUtil().setSp(18),
-            color: Colors.white,
-            fontWeight: FontWeight.w700 ,
-          ),
-          //style: white16BoldTextStyle,
-        ),
-      ),
-    );
-  }
-
-  Widget benificiariesText() {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: fixPadding * 2.0,
-      ),
-      child: const Text(
-        'Your beneficiaries',
-        // style: black16BoldTextStyle,
-      ),
-    );
-  }
 
   Widget userBeneficiaries() {
     return Container(
-      margin:  EdgeInsets.all(fixPadding * 0.5),
-      padding: EdgeInsets.only(left:10,right:10, top:15), //const EdgeInsets.symmetric(vertical: 10,horizontal: 10),
+      margin:  EdgeInsets.all(fixPadding * 0.2),
+      padding: EdgeInsets.only(left:4,right:4, top:10), //const EdgeInsets.symmetric(vertical: 10,horizontal: 10),
       alignment: Alignment.center,
       //alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10.0),
+        borderRadius: BorderRadius.circular(4.0),
         /*boxShadow: [
                               BoxShadow(
                                 color: Colors.grey.withOpacity(0.2),
@@ -2886,11 +3214,11 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                             ],*/
       ),
       child: GridView.count(
-        crossAxisCount: 4,
-        childAspectRatio: 1,
-        padding: const EdgeInsets.all(0.5),
-        mainAxisSpacing: 8.0,
-        crossAxisSpacing: 3.0,
+        crossAxisCount: 5,
+        childAspectRatio: 1.1,
+        padding: const EdgeInsets.all(0.2),
+        mainAxisSpacing: 5.0,
+        crossAxisSpacing: 1,
         shrinkWrap: true,
         //primary: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -2910,10 +3238,10 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(2),
+                      padding: const EdgeInsets.all(3.8),
                       decoration: BoxDecoration(
                         color: Colors.deepPurple,
-                        borderRadius: BorderRadius.circular(5.0),
+                        borderRadius: BorderRadius.circular(3.0),
                         /*boxShadow: [
                               BoxShadow(
                                 color: Colors.grey.withOpacity(0.2),
@@ -2928,9 +3256,9 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                       child: Text(
                         item['name']!,
                         style: TextStyle(
-                          fontSize: ScreenUtil().setSp(15),
+                          fontSize: ScreenUtil().setSp(14.4),
                           color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                          //fontWeight: FontWeight.w500,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -2966,9 +3294,9 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                             attendeesetc.toString():
                             attendeesall.toString(),
                           style:  TextStyle(
-                            fontSize: ScreenUtil().setSp(24),
+                            fontSize: ScreenUtil().setSp(20),
                             //color: Colors.black,
-                            //fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w500,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -2992,6 +3320,7 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (appState.loginState == ApplicationLoginState.loggedOut/*&&btState==BluetoothDeviceState.connected*/) ...[
+                homeHeaderImage(),
                 heightSpace,
                 const Header('오늘의 안전수칙'),
                 const Paragraph('말로하는 안전보다.실천하는 안전점검'),
@@ -3000,15 +3329,16 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
               ],
 
               if (appState.loginState == ApplicationLoginState.loggedIn/*&&btState==BluetoothDeviceState.connected*/) ...[
-                if(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') ...[
-                  const SizedBox(height:7,),
+                if(role=='manager') ...[
+                //if(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') ...[
+                  const SizedBox(height:4,),
                   Container (
                     margin:  EdgeInsets.only(left:fixPadding * 0.5,right:fixPadding * 0.5),
                     padding: EdgeInsets.symmetric(vertical: fixPadding),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(10.0),
+                      borderRadius: BorderRadius.circular(6.0),
                       /*boxShadow: [
                         BoxShadow(
                           color: Colors.grey.withOpacity(0.2),
@@ -3027,19 +3357,41 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                     ),
                   ),
                   const SizedBox(height:5,),
-                  const Header('최근 특이사항'),
-                  AccidentList(
-                    messages: appState.accidentmessages, // new
-                    weekCount: 1,
-                    isName: true,
-                  ),
                   //addNewBeneficiaryButton(),
                   const Header('종합 사고상황'),
                   //benificiariesText(),
                   userBeneficiaries(),
+                  const SizedBox(height:5,),
+                  const Header('최근 특이사항'),
+                  Container(
+                    //height: ,
+                      margin:  EdgeInsets.all(fixPadding * 0.5),
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      //alignment: Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple,
+                        borderRadius: BorderRadius.circular(6.0),
+                        /*boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 0,
+                                blurRadius: 5,
+                                offset: Offset(0,2),
+                              ),
+                            ],*/
+                      ),
+                      child: accidentDetail( '발생일자', '발생시각', '작업자','특이사항' ,Colors.white)
+                  ),
+                  AccidentList(
+                    messages: appState.accidentmessages, // new
+                    weekCount: 1,
+                    isName: true,
+                    isPosition:false,
+                  ),
                 ]
                 else ...
                 [
+                  homeHeaderImage(),
                   const SizedBox(height:7,),
                   Container (
                     margin:  EdgeInsets.only(left:fixPadding * 0.5,right:fixPadding * 0.5),
@@ -3054,7 +3406,7 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                         workDate(),
                         workTime(),
                         workerZone(),
-                        workerName(displayName!),
+                        workerName(displayName),
                         workerBeltState(),
                       ],
                     ),
@@ -3062,10 +3414,29 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                   const SizedBox(height:5,),
                   const Header('최근 특이사항'),
                   //const Header('마지막 발생한 안전상황'),
+                  Container(
+                      margin:  EdgeInsets.all(fixPadding * 0.3),
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      //alignment: Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple,
+                        borderRadius: BorderRadius.circular(6.0),
+                        /*boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 0,
+                                blurRadius: 5,
+                                offset: Offset(0,2),
+                              ),
+                            ],*/
+                      ),
+                      child: accidentDetail( '발생일자', '발생시각', '작업자','특이사항' ,Colors.white)
+                  ),
                   AccidentList(
                     messages: appState.accidentmessages, // new
                     weekCount: 1,
                     isName: true,
+                    isPosition:false,
                   ),
                   /*GuestBook(
                     messages: appState.guestBookMessages, // new
@@ -3226,7 +3597,6 @@ class _HomeState extends State<Home> {
       body:
       ListView(
         children: <Widget>[
-          homeHeaderImage(),
           HomePersonalInfo(),
           heightSpace,
         ],
@@ -3480,18 +3850,25 @@ class _MapAreaState extends State<MapArea> {
     );
   }
 
+  double _oldUserLatitude =0;
+  double _oldUserLongitude =0;
+
   @override
   void initState() {
     // TODO: implement initState
     controller.center=LatLng(widget.latitude, widget.longitude);
     super.initState();
+
   }
 
   @override
   Widget build(BuildContext context) {
 
-    if(widget.refresh==true)
+    if(_oldUserLatitude!=widget.latitude &&_oldUserLongitude!=widget.longitude) {
       _gotoTarget();
+      _oldUserLatitude=widget.latitude;
+      _oldUserLongitude=widget.longitude;
+    }
 
     return Scaffold(
       body: Stack(
@@ -3626,22 +4003,25 @@ class AccidentCaseDetailPage extends StatefulWidget {
 
 class _AccidentCaseDetailPageState extends State<AccidentCaseDetailPage> {
 
+
   List<AccidentMessage> get iaLogMessages => _iaLogMessages;
   List<AccidentMessage> get ffLogMessages => _ffLogMessages;
   List<AccidentMessage> get imLogMessages => _imLogMessages;
 
 
   final ScrollController _scrollController = ScrollController();
-
+/*
   AppBar appBar =AppBar(
-    title:  Text('사고별 현황'),
+    title:  appBarTitleText,
   );
-
+*/
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: scaffoldBgColor,
-      appBar: appBar,
+      appBar: AppBar(
+        title:  Text(widget.itemname+' 현황'),
+      ),
       body:  Consumer<ApplicationState>(
         builder: (context, appState, _) => Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -3664,7 +4044,7 @@ class _AccidentCaseDetailPageState extends State<AccidentCaseDetailPage> {
                               ),
                             ],*/
                 ),
-                child: accidentDetail( '발생일자', '발생시각', '작업자','경도\n사고 위치' ,Colors.white)
+                child: accidentDetail( '발생일자', '발생시각', '작업자','발생 위치' ,Colors.white)
             ),
             Expanded(
               child: AccidentList(
@@ -3682,6 +4062,7 @@ class _AccidentCaseDetailPageState extends State<AccidentCaseDetailPage> {
                 iaLogMessages,
                 weekCount: 0,
                 isName: true,
+                isPosition:true,
               ),
             ),
             const SizedBox(height:5),
@@ -3725,7 +4106,7 @@ class _WorkerDetailPageState extends State<WorkerDetailPage> {
     return Scaffold(
       backgroundColor: scaffoldBgColor,
       appBar: appBar,
-      body:  Column(
+      body: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -3747,8 +4128,8 @@ class _WorkerDetailPageState extends State<WorkerDetailPage> {
                     ),
                   ],
                 ),
-                child:  Consumer<ApplicationState>(
-                    builder: (context, appState, _) => MapArea(latitude: (appState.positionA.latitude==null)?widget.latitude:appState.positionA.latitude, longitude: (appState.positionA.longitude==null)?widget.longitude:appState.positionA.longitude, pos1: false, pos2:false, refresh: true )
+                child: Consumer<ApplicationState>(
+                    builder: (context, appState, _) => MapArea(latitude: (appState.positionA!.latitude==0)?widget.latitude:appState.positionA!.latitude, longitude: (appState.positionA!.longitude==0)?widget.longitude:appState.positionA!.longitude, pos1: false, pos2:false, refresh: true )
                 ),
             ),
             Container(
@@ -3759,7 +4140,7 @@ class _WorkerDetailPageState extends State<WorkerDetailPage> {
                   color: Colors.deepPurple,
                   borderRadius: BorderRadius.circular(10.0),
                 ),
-                child: accidentDetail( '발생일자', '발생시간', '발생상황', '경도\n위치 정보',Colors.white)
+                child: accidentDetail( '발생일자', '발생시간', '발생상황', '위치 정보',Colors.white)
             ),
             Expanded(
                 child: Container(
@@ -3769,55 +4150,46 @@ class _WorkerDetailPageState extends State<WorkerDetailPage> {
                     color:Colors.white,
                     borderRadius: BorderRadius.circular(10.0),
                   ),
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('guestbook')
-                        .where('userId',isEqualTo:widget.uid) //jay user
-                        .orderBy("timestamp", descending: true)
-                        .snapshots(),
-                    builder: (context, streamSnapshot) {
-                      logger.warning('user:'+widget.uid);
-                      if(!streamSnapshot.hasData){
-                        logger.warning('no user data or waiting data');
-                        return Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      }
-                      else {
-                        logger.warning('user\' Accidents:'+streamSnapshot.data!.docs.length.toString());
-                        return Consumer<ApplicationState>(
-                          builder: (context, appState, _) => ListView.builder(
-                          itemCount: streamSnapshot.data!.docs.length,
-                          itemBuilder: (ctx, index){
-                            return InkWell(
-                                onTap:() {
-                                  _onSelected(index);
-                                  LatLng? posA =LatLng(streamSnapshot.data!.docs[index]['latitude'], streamSnapshot.data!.docs[index]['longitude']);
-                                  appState.setpositionA(posA);
-                                  },
-                                child: AccidentDetailwithTimeStamp(
-                                    timestamp: streamSnapshot.data!.docs[index]['timestamp'],
-                                    str1: 'none',
-                                    str2: 'none',
-                                    str3: streamSnapshot.data!.docs[index]['text'],
-                                    str4: streamSnapshot.data!.docs[index]['latitude'].toString() +', '+streamSnapshot.data!.docs[index]['longitude'].toString(),
-                                    color: _selectedIndex != null && _selectedIndex == index? Colors.deepPurple: Colors.black
-                                ),
-                              );
-                          }
-                          ),
-                        );
-                      }
-                    },
-                  ),
+
+                  child: Consumer<ApplicationState>(
+                    builder: (context, appState, _)  {
+                      List<AccidentMessage>   userLogMessages =
+                          appState.accidentmessages.where((element) => element.uid.startsWith(widget.uid)).toList();
+
+                      return ListView.builder(
+                      itemCount: userLogMessages.length,
+                      itemBuilder: (ctx, index){
+                        if(userLogMessages[index].message=='지도노티') { //jay todo 210812: 좀더 최적화 해야 하지 않을까?
+                          return Container();
+                        }
+                        else {
+                          return InkWell(
+                            onTap: () {
+                              List<String> strLocation;
+                              _onSelected(index);
+                              strLocation =
+                                  userLogMessages[index].location.split(', ');
+                              LatLng? posA = LatLng(
+                                  double.parse(strLocation[0]),
+                                  double.parse(strLocation[1]));
+                              appState.setpositionA(posA);
+                            },
+                            child: AccidentDetailwithTimeStamp(
+                                timestamp: userLogMessages[index].timestamp,
+                                str1: 'none',
+                                str2: 'none',
+                                str3: userLogMessages[index].message,
+                                str4: userLogMessages[index].location,
+                                color: _selectedIndex != null &&
+                                    _selectedIndex == index
+                                    ? Colors.deepPurple
+                                    : Colors.black
+                            ),
+                          );
+                        }
+                      });
+                    }),
                 ),
-              /*
-              child: AccidentList(
-                messages: appState.accidentmessages, // new
-                weekCount: 0,
-                isName:false,
-              ),
-              */
             ),
             const SizedBox(height:5),
           ],
@@ -3855,7 +4227,7 @@ class _WorkerMapState extends State<WorkerMap> {
             children: [
               const SizedBox(height:5),
               Container (
-                height: ScreenUtil().setHeight(152)-appBar.preferredSize.height,
+                height: ScreenUtil().setHeight(101),
                 width: ScreenUtil().setWidth(350),
                 margin:  EdgeInsets.only(left:fixPadding * 1.0,right:fixPadding * 1.0),
                 padding: EdgeInsets.symmetric(vertical: fixPadding),
@@ -3876,16 +4248,17 @@ class _WorkerMapState extends State<WorkerMap> {
                 child: Column(
                   children: [
                     //workDate(),
-                    //workTime(),
+
                     //workerZone(),
                     workerName(widget.name),
                     accidentName(widget.state),
+                    workTime(),
                   ],
                 ),
               ),
               const SizedBox(height:5),
               Container(
-                  height: ScreenUtil().setHeight(500),
+                  height: ScreenUtil().setHeight(550)-appBar.preferredSize.height,
                   width: ScreenUtil().setWidth(350),
                   margin:  EdgeInsets.only(left:fixPadding * 1.0,right:fixPadding * 1.0),
                   padding: EdgeInsets.symmetric(vertical: fixPadding),
@@ -4367,6 +4740,8 @@ class _HomePageState extends State<HomePage> {
         geolatitude=value.latitude,
         geolongitude=value.longitude,
         logger.warning('tmrGeo_geolocation $geolatitude, $geolongitude'),
+
+        setMylocation(iuserId, GeoPoint(geolatitude,geolongitude)),
       });
     });
   }
@@ -4480,7 +4855,12 @@ class _HomePageState extends State<HomePage> {
                         _events = StreamController<int>();
                         _events?.add(60);
                         //alertD(context, state);
-                        newAlertD(context, displayName!, state);
+                        if(state=='위급상황') {
+                          alertD(context, state);
+                        }
+                        else {
+                          newAlertD(context, displayName, state);
+                        }
                       }
                     }
                     logger.warning('------------- End of listenB('+state+') -------------');
@@ -4972,7 +5352,8 @@ class _HomePageState extends State<HomePage> {
   double batteryPercent=0;
   bool isDissconnectbyMenu =false;
   int _currentIndex = 0;
-  final List<Widget> _bodychildren = [Home(), Profile(),First2()];
+  final List<Widget> _bodyManager = [Home(),First2(), Profile()];
+  final List<Widget> _bodyWorker = [Home(), Profile()];
   void _onTap(int index) {
     setState(() {
       _currentIndex = index;
@@ -5117,8 +5498,29 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
 
-      body: _bodychildren[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
+
+      //body: (logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') ? _bodyManager[_currentIndex]:_bodyWorker[_currentIndex],
+      body: (role=='manager') ? _bodyManager[_currentIndex]:_bodyWorker[_currentIndex],
+       //bottomNavigationBar: (logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') ? BottomNavigationBar(
+      bottomNavigationBar: (role=='manager') ? BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          onTap: _onTap,
+          currentIndex: _currentIndex,
+          // ignore: prefer_const_literals_to_create_immutables
+          items: [
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              title: Text('홈'),
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.find_in_page),
+              title: Text('작업자현황'),
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              title: Text('프로필'),
+            ),
+          ]):BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           onTap: _onTap,
           currentIndex: _currentIndex,
@@ -5132,13 +5534,7 @@ class _HomePageState extends State<HomePage> {
               icon: Icon(Icons.person),
               title: Text('프로필'),
             ),
-            if(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') ...[
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.find_in_page),
-              title: Text('작업자현황'),
-            ),] ,
           ]),
-
     );
   }
 }
