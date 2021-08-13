@@ -39,7 +39,6 @@ import 'package:restart_app/restart_app.dart';
 
 final logger = SimpleLogger();
 
-
 List<AccidentMessage> get iaLogMessages => _iaLogMessages;
 List<AccidentMessage> _iaLogMessages = [];
 List<AccidentMessage> get ffLogMessages => _ffLogMessages;
@@ -1021,8 +1020,8 @@ class WorkerListMessage {
     required this.workzone,
     required this.role,
     required this.belt,
-    required this.worktime,
-    required this.location,
+    this.worktime,
+    this.location,
     required this.accident
   });
   final String name;
@@ -1030,8 +1029,8 @@ class WorkerListMessage {
   final String workzone;
   final String role;
   final bool belt;
-  final DateTime worktime;
-  final GeoPoint location;
+  final DateTime? worktime;
+  final GeoPoint? location;
   final int accident;
 }
 
@@ -1058,6 +1057,7 @@ class AccidentList extends StatefulWidget {
 }
 
 class _AccidentListState extends State<AccidentList> {
+  int realViewCount=0;
   @override
   Widget build(BuildContext context) {
     return  Container(
@@ -1088,9 +1088,10 @@ class _AccidentListState extends State<AccidentList> {
           if( timeToWorkStart!.isAfter(item.timestamp)&&widget.weekCount!>0) {
             return Container(); //jaytodo
           } else {
+            realViewCount++;
             return Consumer<ApplicationState>(
               builder: (context, appState, _) {
-                if(item.message=='지도노티'||item.message=='턱끈연결'||item.message=='턱끈해제' ||(role!='manager')&&(item.message=='연결해제'||item.message=='연결복귀')) //jay todo 210812: 좀더 최적화 해야 하지 않을까?
+                if(item.message=='지도노티'||(widget.weekCount==1)&&(item.message=='턱끈연결'||item.message=='턱끈해제' )||(role!='manager')&&(item.message=='연결해제'||item.message=='연결복귀')) //jay todo 210812: 좀더 최적화 해야 하지 않을까?
                   return Container();
                 else
                   return InkWell(
@@ -1100,19 +1101,7 @@ class _AccidentListState extends State<AccidentList> {
                     onTap: () {
                       List<String> strLocation;
                       strLocation= item.location.split(', ');
-                      LatLng positiona;
-                      positiona = LatLng(double.parse(strLocation[0]),double.parse(strLocation[1])) ;
-                      appState.setpositionA(positiona);
-
-  /*
-                      Navigator.push(context, MaterialPageRoute(
-                          builder: (context) =>
-                              WorkerDetailPage(latitude: 37.4219983,
-                                  longitude: -122.084,
-                                  name: 'tt',
-                                  state: '상태')));
-   */
-
+                      Navigator.push(context, MaterialPageRoute(builder: (context)=>Second(latitude:double.parse(strLocation[0]) , longitude: double.parse(strLocation[1]))));
                     }
                 );
               }
@@ -1701,7 +1690,7 @@ class ApplicationState extends ChangeNotifier {
             .collection('user')
             .where('uid',isEqualTo:user.uid) //jay user
             .get().then((value){
-              workZone = (value.docs[0].data()['workZone']!=null)?value.docs[0].data()['workZone']:'기본';
+              workZone = (value.docs[0].data()['workzone']!=null)?value.docs[0].data()['workzone']:'기본';
               role = (value.docs[0].data()['role']!=null)?value.docs[0].data()['role']:'worker' ;
             });
 
@@ -1739,9 +1728,9 @@ class ApplicationState extends ChangeNotifier {
                     workzone: (document.data()['workzone']==null)?'none':document.data()['workzone'],
                     role: (document.data()['role']==null)?'none':document.data()['role'],
                     belt: (document.data()['belt']==null)?false:document.data()['belt'],
-                    worktime: (document.data()['worktime']==null)?0:document.data()['worktime'],
-                    location: (document.data()['location']==null)?'none':document.data()['location'],
-                    accident: (document.data()['accident']==null)?'none':document.data()['accident']
+                    worktime: document.data()['worktime'],
+                    location: document.data()['location'],
+                    accident: (document.data()['accident']==null)?0:document.data()['accident']
                 ),
               );
             });
@@ -3086,7 +3075,7 @@ Widget workTime(){
 }
 
 Widget workerZone(){
-  return IconAndDetail(Icons.location_city_outlined, '작업지역 : '+'서울시 구로구 A');
+  return IconAndDetail(Icons.location_city_outlined, '작업지역 : '+workZone);
 }
 
 Widget workerName( String name){
@@ -3116,7 +3105,11 @@ class AccidentDetailwithTimeStamp extends StatelessWidget {
 
 
 Widget accidentDetail( String str1, String str2, String str3, String str4, Color color){
-  return SizedBox(
+  return Container(
+    decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4.0),
+        border: Border.all(color: (color==Colors.deepPurple)? Colors.deepPurple:Colors.transparent)
+    ),
     width:double.infinity,
     child: Row(
       children: [
@@ -3362,7 +3355,28 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                   //benificiariesText(),
                   userBeneficiaries(),
                   const SizedBox(height:5,),
-                  const Header('최근 특이사항'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Header('최근 특이사항'),
+                      InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      AccidentCaseDetailPage(itemname: '모든 특이사항'))).then((value) => // ShowDataLogerScreen
+                          setState(() {})); //_startscan();
+                        } ,
+                        child: const Text('모든 특이사항       ',
+                          style:TextStyle(
+                            fontSize: 10.0,
+                            color: Colors.black54,
+                            //fontWeight: FontWeight.w500 ,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   Container(
                     //height: ,
                       margin:  EdgeInsets.all(fixPadding * 0.5),
@@ -3412,8 +3426,28 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                     ),
                   ),
                   const SizedBox(height:5,),
-                  const Header('최근 특이사항'),
-                  //const Header('마지막 발생한 안전상황'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Header('최근 특이사항'),
+                      InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      AccidentCaseDetailPage(itemname: '모든 특이사항'))).then((value) => // ShowDataLogerScreen
+                          setState(() {})); //_startscan();
+                        } ,
+                        child: const Text('모든 특이사항       ',
+                          style:TextStyle(
+                            fontSize: 10.0,
+                            color: Colors.black54,
+                            //fontWeight: FontWeight.w500 ,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   Container(
                       margin:  EdgeInsets.all(fixPadding * 0.3),
                       padding: const EdgeInsets.symmetric(vertical: 5),
@@ -4004,9 +4038,6 @@ class AccidentCaseDetailPage extends StatefulWidget {
 class _AccidentCaseDetailPageState extends State<AccidentCaseDetailPage> {
 
 
-  List<AccidentMessage> get iaLogMessages => _iaLogMessages;
-  List<AccidentMessage> get ffLogMessages => _ffLogMessages;
-  List<AccidentMessage> get imLogMessages => _imLogMessages;
 
 
   final ScrollController _scrollController = ScrollController();
@@ -4044,25 +4075,29 @@ class _AccidentCaseDetailPageState extends State<AccidentCaseDetailPage> {
                               ),
                             ],*/
                 ),
-                child: accidentDetail( '발생일자', '발생시각', '작업자','발생 위치' ,Colors.white)
+                child: (widget.itemname!='모든 특이사항')?
+                accidentDetail( '발생일자', '발생시각', '작업자','발생 위치' ,Colors.white)
+                    :accidentDetail( '발생일자', '발생시각', '작업자','특이사항' ,Colors.white),
             ),
             Expanded(
-              child: AccidentList(
-                messages:
-                (widget.itemname=='무활동반응')?iaLogMessages:
-                (widget.itemname=='추락사고')?ffLogMessages:
-                (widget.itemname=='충격사고')?imLogMessages:
-                (widget.itemname=='위급상황')?emLogMessages:
-                (widget.itemname=='상황해제')?uemLogMessages:
-                (widget.itemname=='연결해제')?ucnLogMessages:
-                (widget.itemname=='연결복귀')?rcnLogMessages:
-                (widget.itemname=='턱끈연결')?beltLogMessages:
-                (widget.itemname=='턱끈해제')?ubeltLogMessages:
-                (widget.itemname=='그밖의긴급상황')?etcLogMessages:
-                iaLogMessages,
-                weekCount: 0,
-                isName: true,
-                isPosition:true,
+              child:  Consumer<ApplicationState>(
+                builder: (context, appState, _) => AccidentList(
+                  messages:
+                  (widget.itemname=='무활동반응')?iaLogMessages:
+                  (widget.itemname=='추락사고')?ffLogMessages:
+                  (widget.itemname=='충격사고')?imLogMessages:
+                  (widget.itemname=='위급상황')?emLogMessages:
+                  (widget.itemname=='상황해제')?uemLogMessages:
+                  (widget.itemname=='연결해제')?ucnLogMessages:
+                  (widget.itemname=='연결복귀')?rcnLogMessages:
+                  (widget.itemname=='턱끈연결')?beltLogMessages:
+                  (widget.itemname=='턱끈해제')?ubeltLogMessages:
+                  (widget.itemname=='그밖의상황')?etcLogMessages:
+                  appState.accidentmessages,
+                  weekCount: 0,
+                  isName: true,
+                  isPosition:(widget.itemname!='모든 특이사항')?true:false,
+                ),
               ),
             ),
             const SizedBox(height:5),
@@ -4674,7 +4709,39 @@ class _SecondState extends State<Second> {
     ),
       floatingActionButton: Stack(
         children: <Widget>[
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left:30.0),
+              child: Container(
+                width:  ScreenUtil().setWidth(130),
+                height:ScreenUtil().setHeight(50),
+                child: FloatingActionButton.extended(
+                  heroTag: "my",
+                  onPressed: _gotoDefault,
+                  label: const Text('내위치'),
+                  icon: const Icon(Icons.location_pin),
+                ),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Container(
+              width:  ScreenUtil().setWidth(130),
+              height:ScreenUtil().setHeight(50),
+              child: FloatingActionButton.extended(
+                heroTag: "wk",
+                onPressed: _gotoTarget,
+                label: const Text('사고위치'),
+                icon: const Icon(Icons.my_location),
+                backgroundColor: Colors.red,
+              ),
+            ),
+          ),
+          /*
           Padding(padding: const EdgeInsets.only(left:31),
+
             child: Align(
               alignment: Alignment.bottomLeft,
               child: FloatingActionButton.extended(
@@ -4696,6 +4763,7 @@ class _SecondState extends State<Second> {
               backgroundColor: Colors.red,
             ),
           ),
+          */
         ],
       )
       /*
@@ -5633,6 +5701,100 @@ class _HomePageState extends State<HomePage> {
       ),
 * */
 
+/*
+      ListView(
+        children: <Widget>[
+           //Image.asset('assets/image/caring-nurse-and-the-girl-FPAX4FK.png'),
+
+          const SizedBox(height: 8),
+          IconAndDetail(Icons.calendar_today, DateFormat('yyyy년 MM월 dd일 HH시mm분').format(DateTime.now()).toString()),
+          IconAndDetail(Icons.location_city, '서울시 구로구 A 작업지'),
+          //IconAndDetail(Icons.location_city, '안양시 만안구 A병원'),
+
+          // Add from here
+          Consumer<ApplicationState>(
+            builder: (context, appState, _) => Authentication(
+              email: appState.email,
+              loginState: appState.loginState,
+              startLoginFlow: appState.startLoginFlow,
+              verifyEmail: appState.verifyEmail,
+              signInWithEmailAndPassword: appState.signInWithEmailAndPassword,
+              cancelRegistration: appState.cancelRegistration,
+              registerAccount: appState.registerAccount,
+              signOut: appState.signOut,
+            ),
+          ),
+          // to here
+
+          Consumer<ApplicationState>(
+            builder: (context, appState, _) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /*
+                // Add from here
+                if (appState.attendees >= 2)
+                  Paragraph('${appState.attendees} 명의 작업자가 공동작업 중에 있습니다')
+                  //Paragraph('${appState.attendees} 명이 함께 헬스 시큐리티 관리 중에 있습니다')
+                else if (appState.attendees == 1)지
+                  //Paragraph('1 명이 함께 헬스 시큐리티 관리 중에 있습니다')
+                else
+                  Paragraph('작업자가 없습니다'),
+                  //Paragraph('관리대상 없습니다'),
+                // To here.
+
+                 */
+                const Divider(
+                  height: 8,
+                  thickness: 1,
+                  indent: 8,
+                  endIndent: 8,
+                  color: Colors.grey,
+                ),
+
+                if (appState.loginState == ApplicationLoginState.loggedIn/*&&btState==BluetoothDeviceState.connected*/) ...[
+                  /*
+                  // Add from here
+                  YesNoSelection(
+                    state: appState.attending,
+                    onSelection: (attending) => appState.attending = attending,
+                  ),
+                  // To here
+                 */
+
+                  heightSpace,
+                  heightSpace,
+                  Header('마지막 발생한 안전상황'),
+                  GuestBook(
+                    messages: appState.guestBookMessages, // new
+                    addMessage: (String message) =>
+                        appState.addMessageToGuestBook(message),
+                  ),
+                ],
+                if (appState.loginState == ApplicationLoginState.loggedOut/*&&btState==BluetoothDeviceState.connected*/) ...[
+                  /*
+                  // Add from here
+                  YesNoSelection(
+                    state: appState.attending,
+                    onSelection: (attending) => appState.attending = attending,
+                  ),
+                  // To here
+                 */
+                  heightSpace,
+                  heightSpace,
+                  Header('오늘의 안전수칙'),
+                  Paragraph('말로하는 안전보다.실천하는 안전점검'),
+                ],
+              ],
+            ),
+          ),
+
+          heightSpace,
+
+          // To here.
+        ],
+      ),
+* */
+
 final beneficiariesList = [
   /*{
     'name': '모든사고',
@@ -5680,267 +5842,3 @@ final beneficiariesList = [
   },
 ];
 
-
-class Beneficiaries extends StatefulWidget {
-  @override
-  _BeneficiariesState createState() => _BeneficiariesState();
-}
-
-class _BeneficiariesState extends State<Beneficiaries> {
-
-  final historyBeneficiariesList = [
-    {
-      'name': 'Beatriz',
-      'image': 'assets/user/user_11.jpg',
-    },
-    {
-      'name': 'Shira',
-      'image': 'assets/user/user_12.jpg',
-    },
-    {
-      'name': 'Steve',
-      'image': 'assets/user/user_8.jpg',
-    },
-    {
-      'name': 'Mike',
-      'image': 'assets/user/user_2.jpg',
-    },
-    {
-      'name': 'Linnea',
-      'image': 'assets/user/user_3.jpg',
-    },
-    {
-      'name': 'John',
-      'image': 'assets/user/user_1.jpg',
-    },
-  ];
-  double? height;
-  @override
-  Widget build(BuildContext context) {
-    height = MediaQuery.of(context).size.height;
-    return Scaffold(
-      backgroundColor: scaffoldBgColor,
-      appBar: AppBar(
-        backgroundColor: whiteColor,
-        elevation: 1.0,
-        centerTitle: true,
-        title: const Text(
-          'Beneficiaries',
-          //style: black18BoldTextStyle,
-        ),
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: blackColor,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: ListView(
-        physics: const BouncingScrollPhysics(),
-        children: [
-          addNewBeneficiaryButton(),
-          benificiariesText(),
-          userBeneficiaries(),
-          historyText(),
-          historyBeneficiaries(),
-        ],
-      ),
-    );
-  }
-
-  Widget historyBeneficiaries() {
-    return Container(
-      // height: height / 3.7,
-      margin: EdgeInsets.only(
-        top: fixPadding + 5.0,
-        bottom: fixPadding + 5.0,
-      ),
-      child: GridView.count(
-        crossAxisCount: 3,
-        childAspectRatio: 1.0,
-        padding: const EdgeInsets.all(4.0),
-        mainAxisSpacing: 4.0,
-        crossAxisSpacing: 4.0,
-        shrinkWrap: true,
-        primary: true,
-        physics: const NeverScrollableScrollPhysics(),
-        children: historyBeneficiariesList.map(
-              (item) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                InkWell(
-                onTap: () {
-              Navigator.pop(context);
-            },/* Navigator.push(
-                    context,
-                    PageTransition(
-                      duration: Duration(milliseconds: 500),
-                      type: PageTransitionType.rightToLeft,
-                      child: BeneficiaryMoneyTransfer(
-                        userPhoto: item['image'],
-                        name: item['name'],
-                      ),
-                    ),
-                  ),*/
-                  child: Column(
-                    children: [
-                      Text(
-                        item['name']!,
-                        //style: black14MediumTextStyle,
-                      ),
-                      const SizedBox(height: 10.0),
-                      Container(
-                        height: 70.0,
-                        width: 70.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          image: DecorationImage(
-                            image: AssetImage(item['image']!),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ).toList(),
-      ),
-    );
-  }
-
-  Widget historyText() {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: fixPadding * 2.0,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.history,
-            size: 20.0,
-            color: blackColor,
-          ),
-          widthSpace,
-          const Text(
-            'History',
-           // style: black16BoldTextStyle,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget addNewBeneficiaryButton() {
-    return InkWell(
-        onTap: () {
-          Navigator.pop(context);
-        },
-     /* onTap: () => Navigator.push(
-        context,
-        PageTransition(
-          duration: Duration(milliseconds: 500),
-          type: PageTransitionType.rightToLeft,
-          child: AddNewBeneficiary(),
-        ),
-      ),*/
-      // ignore: avoid_unnecessary_containers
-      child: Container(
-        child: Container(
-          margin: EdgeInsets.all(fixPadding * 2.0),
-          padding: EdgeInsets.symmetric(vertical: fixPadding),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: primaryColor,
-            borderRadius: BorderRadius.circular(10.0),
-          ),
-          child: const Text(
-            'Add new beneficiary',
-            //style: white16BoldTextStyle,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget benificiariesText() {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: fixPadding * 2.0,
-      ),
-      child: const Text(
-        'Your beneficiaries',
-       // style: black16BoldTextStyle,
-      ),
-    );
-  }
-
-  Widget userBeneficiaries() {
-    return Container(
-      margin: EdgeInsets.only(
-        top: fixPadding + 5.0,
-        bottom: fixPadding + 5.0,
-      ),
-      child: GridView.count(
-        crossAxisCount: 3,
-        childAspectRatio: 1.0,
-        padding: const EdgeInsets.all(4.0),
-        mainAxisSpacing: 4.0,
-        crossAxisSpacing: 4.0,
-        shrinkWrap: true,
-        primary: true,
-        physics: const NeverScrollableScrollPhysics(),
-        children: beneficiariesList.map(
-              (item) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                InkWell(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  /*
-                  onTap: () => Navigator.push(
-                    context,
-                    PageTransition(
-                      duration: Duration(milliseconds: 500),
-                      type: PageTransitionType.rightToLeft,
-                      child: BeneficiaryMoneyTransfer(
-                        userPhoto: item['image'],
-                        name: item['name'],
-                      ),
-                    ),
-                  ),*/
-                  child: Column(
-                    children: [
-                      Text(
-                        item['name']!,
-                        //style: black14MediumTextStyle,
-                      ),
-                      const SizedBox(height: 10.0),
-                      Container(
-                        height: 70.0,
-                        width: 70.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          image: DecorationImage(
-                            image: AssetImage(item['image']!),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ).toList(),
-      ),
-    );
-  }
-}
