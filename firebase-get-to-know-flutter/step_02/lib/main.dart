@@ -787,20 +787,27 @@ class _YesNoSelectionState extends State<YesNoSelection> {
 }
 late AudioPlayer player;
 
+int playerstate =0;
 void _playSound() {
   // ignore: avoid_print
-  logger.warning('_playSound');
+  logger.warning('_soundplaySound ${playerstate}');
+
   player.play();
+  playerstate =1;
+
 }
 
 void _stopSound() {
   // ignore: avoid_print
-  logger.warning('_stopSound');
-  player.stop();
+  logger.warning('_soundstopSound ${playerstate}');
+  if(playerstate==1) {
+    player.stop();
+  }
+  playerstate =0;
 }
 void _setAsset(String str) {
   // ignore: avoid_print
-  logger.warning('_setAsset');
+  logger.warning('_soundsetAsset');
   player.setAsset(str);
 }
 
@@ -1057,7 +1064,7 @@ class _WorkerListState extends State<WorkerList> {
                           fontSize: 10,
                         )),
                     trailing: SizedBox(
-                      width: 135,
+                      width: ScreenUtil().setWidth(140),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -1841,6 +1848,8 @@ class ApplicationState extends ChangeNotifier {
   }
 
   StreamSubscription<User?>? listenUser;
+
+  StreamSubscription<QuerySnapshot>? listenWhoAmI;
   /*
   StreamSubscription<QuerySnapshot>? listenIa;
   StreamSubscription<QuerySnapshot>? listenFf;
@@ -1862,73 +1871,80 @@ class ApplicationState extends ChangeNotifier {
 
     listenUser?.cancel();
     listenUser= FirebaseAuth.instance.userChanges().distinct((p, n) => p?.uid == n?.uid).listen((user) async {
+
       logger.warning('FireStore[FirebaseAuth] -------- userChanges()');
       if (user != null) {
-        _timer_geo = Timer.periodic(const Duration(seconds: 30), (timer) {
-          Geolocator.getCurrentPosition().then((value) async  {
-            geolatitude=value.latitude;
-            geolongitude=value.longitude;
-            logger.warning('tmrState. geolocation. beltstate, worktime');
-
-            if(_stopWatchTimer.isRunning) {
-              helmetElaspedTime = await _stopWatchTimer.rawTime.first;
-            }
-            setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime);
-          });
-        });
 
         timeToWorkStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-        displayPhoneNumber = user.phoneNumber;
-        displayName = user.displayName!;
+       // displayPhoneNumber = user.phoneNumber;
         displayEmail = user.email!;
         iuserId = user.uid;
         logger.warning('email: ${user.email}');
-        logger.warning('name: ${user.displayName}');
-        logger.warning('phone: ${user.phoneNumber}');
+        logger.warning('uid: ${iuserId}');
         //print(timeToWorkStart);
         logState = true;
         _loginState = ApplicationLoginState.loggedIn;
 
-
-        await FirebaseFirestore.instance
+        listenWhoAmI?.cancel();
+        listenWhoAmI=FirebaseFirestore.instance
             .collection('user')
             .where('uid',isEqualTo:user.uid)
-            .get().then((value){
-              workZone = (value.docs[0].data()['workzone']!=null)?value.docs[0].data()['workzone']:'기본';
-              role = (value.docs[0].data()['role']!=null)?value.docs[0].data()['role']:'worker';
-
-              attendees = (value.docs[0].data()['beltcount']!=null)? value.docs[0].data()['beltcount']:0;
+             .snapshots()
+             .listen
+            /*.get().then*/((value) async {
+              displayName = (value.docs[0].data()['name']==null)? '무명':value.docs[0].data()['name'];
+              attendees = (value.docs[0].data()['beltcount']==null)? 0:value.docs[0].data()['beltcount'];
               lastWokDay = DateTime.fromMillisecondsSinceEpoch((value.docs[0].data()['lastworkday']==null)?0:value.docs[0].data()['lastworkday']);
-              helmetElaspedTime = (value.docs[0].data()['helmettime']!=null)? value.docs[0].data()['helmettime']:0;
+              helmetElaspedTime = (value.docs[0].data()['helmettime']==null)?0: value.docs[0].data()['helmettime'];
+              workZone = (value.docs[0].data()['workzone']==null)?'테스트 작업지구':value.docs[0].data()['workzone'];
+              role = (value.docs[0].data()['role']==null)?'worker':value.docs[0].data()['role'];
+
+              logger.warning('name: ${displayName}');
+              logger.warning('phone: ${user.phoneNumber}');
+
               logger.warning('read attendees : ${attendees}');
-        });
+              listenWhoAmI?.cancel();
+              notifyListeners();
 
-        if(timeToWorkStart !=lastWokDay)
-        {
-          logger.warning('today is not today');
-          lastWokDay = timeToWorkStart;
-          attendees=0;
-          helmetElaspedTime =0;
-          final userDoc =  FirebaseFirestore.instance
-              .collection('user')
-              .doc(user.uid);
-          userDoc.update({'lastworkday': timeToWorkStart!.millisecondsSinceEpoch, 'helmettime': helmetElaspedTime});
-        }
+              if(timeToWorkStart !=lastWokDay)
+              {
+                logger.warning('today is not today');
+                lastWokDay = timeToWorkStart;
+                attendees=0;
+                helmetElaspedTime =0;
+                final userDoc =  FirebaseFirestore.instance
+                    .collection('user')
+                    .doc(user.uid);
+                userDoc.update({'lastworkday': timeToWorkStart!.millisecondsSinceEpoch, 'helmettime': helmetElaspedTime});
+              }
 
-        logger.warning('timeToWorkStart : ${timeToWorkStart}');
-        logger.warning('lastworkDay : ${lastWokDay}, helmettime: ${helmetElaspedTime}');
+              logger.warning('timeToWorkStart : ${timeToWorkStart}');
+              logger.warning('lastworkDay : ${lastWokDay}, helmettime: ${helmetElaspedTime}');
 
-          _stopWatchTimer= StopWatchTimer( presetMillisecond: helmetElaspedTime
-          //mode: StopWatchMode.countUp,
-          //onChange: (value) => print('stopwatch onChange $value'),
-          //onChangeRawSecond: (value) => print(' onChangeRawSecond $value'),
-          //onChangeRawMinute: (value) => print(' onChangeRawMinute $value'),
-        );
+              _stopWatchTimer= StopWatchTimer( presetMillisecond: helmetElaspedTime
+                //mode: StopWatchMode.countUp,
+                //onChange: (value) => print('stopwatch onChange $value'),
+                //onChangeRawSecond: (value) => print(' onChangeRawSecond $value'),
+                //onChangeRawMinute: (value) => print(' onChangeRawMinute $value'),
+              );
 
-        logger.warning('workzone: ${workZone}, role: ${role}, uid: ${user.uid}, ' );
+              logger.warning('workzone: ${workZone}, role: ${role}, uid: ${user.uid}, ' );
 
-        if(role=='manager') {
-        //if(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') {
+              _timer_geo = Timer.periodic(const Duration(seconds: 30), (timer) {
+                Geolocator.getCurrentPosition().then((value) async  {
+                  geolatitude=value.latitude;
+                  geolongitude=value.longitude;
+                  logger.warning('tmrState. geolocation. beltstate, worktime');
+
+                  if(_stopWatchTimer.isRunning) {
+                    helmetElaspedTime = await _stopWatchTimer.rawTime.first;
+                  }
+                  setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime);
+                });
+              });
+
+              if(role=='manager') {
+                //if(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') {
 /*
             await FirebaseFirestore.instance
                 .collection("guestbook")
@@ -1944,91 +1960,90 @@ class ApplicationState extends ChangeNotifier {
             });
 */
 
-          listenWorker?.cancel();
-          listenWorker = FirebaseFirestore.instance
-              .collection('user')
-              .where('workzone', isEqualTo: workZone)
-              .snapshots()
-              .listen((snapshot) {
-                _workerLogMessages = [];
-                _attendeesworker = snapshot.docs.length;
-                logger.warning('FireStore[read] -------- worker list:' + _attendeesworker.toString());
-                snapshot.docs.forEach((document) {
-                  logger.warning(document.data()['name'].toString());
-                  _workerLogMessages.add(
-                    WorkerListMessage(
-                        name: document.data()['name'],
+                listenWorker?.cancel();
+                listenWorker = FirebaseFirestore.instance
+                    .collection('user')
+                    .where('workzone', isEqualTo: workZone)
+                    .snapshots()
+                    .listen((snapshot) {
+                  _workerLogMessages = [];
+                  _attendeesworker = snapshot.docs.length;
+                  logger.warning('FireStore[read] -------- worker list:' + _attendeesworker.toString());
+                  snapshot.docs.forEach((document) {
+                    _workerLogMessages.add(
+                      WorkerListMessage(
+                        name:(document.data()['name']==null)?'무명':document.data()['name'] ,
                         uid: document.data()['uid'],
+                        phone:(document.data()['phone']==null)?'01012345678':document.data()['phone'] ,
                         workzone: (document.data()['workzone']==null)?'none':document.data()['workzone'],
-                        phone: (document.data()['phone']==null)?'none':document.data()['phone'],
                         role: (document.data()['role']==null)?'none':document.data()['role'],
                         belt: (document.data()['belt']==null)?false:document.data()['belt'],
                         worktime: (document.data()['helmettime']==null)?0:document.data()['helmettime'],
                         location: document.data()['geopoint'],
                         accident: (document.data()['beltcount']==null)?0:document.data()['beltcount'],
                         lastworkday: DateTime.fromMillisecondsSinceEpoch((document.data()['lastworkday']==null)?0:document.data()['lastworkday']),
-                    ),
-                  );
-                  logger.warning('name:${document.data()['name']}, count: ${document.data()['beltcount']}');
+                      ),
+                    );
+                    logger.warning('name:${document.data()['name']}');
 
-                });
-                notifyListeners();
-              });
-
-          await FirebaseFirestore.instance
-              .collection('guestbook2')
-              .where('workzone', isEqualTo: workZone)
-              .orderBy('timestamp', descending: true)
-              .get().then((value){
-                logger.warning('FireStore[read] -------- 모든 데이터');
-                _accidentMessages = [];
-                value.docs.forEach((document) {
-                  DateTime date = DateTime.fromMillisecondsSinceEpoch(document.data()['timestamp']);
-                  String formattedDate = DateFormat('MM월dd일').format(date);
-                  String formattedTime = DateFormat('HH시mm분').format(date);
-                  _accidentMessages.add(
-                    AccidentMessage(
-                      uid: document.data()['userId'],
-                      name: document.data()['name'],
-                      time:formattedTime,
-                      message: document.data()['text'],
-                      date: formattedDate,
-                      location: document.data()['latitude'].toString() + ', ' +
-                          document.data()['longitude'].toString(),
-                      timestamp: date,
-                    ),
-                  );
+                  });
+                  notifyListeners();
                 });
 
-                _iaLogMessages =[];
-                _iaLogMessages =
-                    _accidentMessages.where((element) => element.message.startsWith('무활동반응')).toList();
-                _attendeesia = _iaLogMessages.length;
-                logger.warning('무활동반응 num:'+_attendeesia.toString());
+                await FirebaseFirestore.instance
+                    .collection('guestbook2')
+                    .where('workzone', isEqualTo: workZone)
+                    .orderBy('timestamp', descending: true)
+                    .get().then((value){
+                  logger.warning('FireStore[read] -------- 모든 데이터');
+                  _accidentMessages = [];
+                  value.docs.forEach((document) {
+                    DateTime date = DateTime.fromMillisecondsSinceEpoch(document.data()['timestamp']);
+                    String formattedDate = DateFormat('MM월dd일').format(date);
+                    String formattedTime = DateFormat('HH시mm분').format(date);
+                    _accidentMessages.add(
+                      AccidentMessage(
+                        uid: document.data()['userId'],
+                        name: document.data()['name'],
+                        time:formattedTime,
+                        message: document.data()['text'],
+                        date: formattedDate,
+                        location: document.data()['latitude'].toString() + ', ' +
+                            document.data()['longitude'].toString(),
+                        timestamp: date,
+                      ),
+                    );
+                  });
 
-                _ffLogMessages =[];
-                _ffLogMessages =
-                    _accidentMessages.where((element) => element.message.startsWith('추락사고')).toList();
-                _attendeesff = _ffLogMessages.length;
-                logger.warning('추락사고 num:'+_attendeesff.toString());
+                  _iaLogMessages =[];
+                  _iaLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('무활동반응')).toList();
+                  _attendeesia = _iaLogMessages.length;
+                  logger.warning('무활동반응 num:'+_attendeesia.toString());
 
-                _imLogMessages =[];
-                _imLogMessages =
-                    _accidentMessages.where((element) => element.message.startsWith('충격사고')).toList();
-                _attendeesim = _imLogMessages.length;
-                logger.warning('충격사고 num:'+_attendeesim.toString());
+                  _ffLogMessages =[];
+                  _ffLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('추락사고')).toList();
+                  _attendeesff = _ffLogMessages.length;
+                  logger.warning('추락사고 num:'+_attendeesff.toString());
 
-                _emLogMessages =[];
-                _emLogMessages =
-                    _accidentMessages.where((element) => element.message.startsWith('위급상황')).toList();
-                _attendeesem = _emLogMessages.length;
-                logger.warning('위급상황 num:'+_attendeesem.toString());
+                  _imLogMessages =[];
+                  _imLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('충격사고')).toList();
+                  _attendeesim = _imLogMessages.length;
+                  logger.warning('충격사고 num:'+_attendeesim.toString());
 
-                _uemLogMessages =[];
-                _uemLogMessages =
-                    _accidentMessages.where((element) => element.message.startsWith('상황해제')).toList();
-                _attendeesemrels = _uemLogMessages.length;
-                logger.warning('상황해제 num:'+_attendeesemrels.toString());
+                  _emLogMessages =[];
+                  _emLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('위급상황')).toList();
+                  _attendeesem = _emLogMessages.length;
+                  logger.warning('위급상황 num:'+_attendeesem.toString());
+
+                  _uemLogMessages =[];
+                  _uemLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('상황해제')).toList();
+                  _attendeesemrels = _uemLogMessages.length;
+                  logger.warning('상황해제 num:'+_attendeesemrels.toString());
 
 /*
                 _uemLogMessages =[];
@@ -2038,354 +2053,362 @@ class ApplicationState extends ChangeNotifier {
                 print('num:'+_attendeesmap.toString());
 */
 
-              _ucnLogMessages =[];
-              _ucnLogMessages =
-                  _accidentMessages.where((element) => element.message.startsWith('연결해제')).toList();
-              _attendeesoffline = _ucnLogMessages.length;
-              logger.warning('연결해제 num:'+_attendeesoffline.toString());
+                  _ucnLogMessages =[];
+                  _ucnLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('연결해제')).toList();
+                  _attendeesoffline = _ucnLogMessages.length;
+                  logger.warning('연결해제 num:'+_attendeesoffline.toString());
 
-              _rcnLogMessages =[];
-              _rcnLogMessages =
-                  _accidentMessages.where((element) => element.message.startsWith('연결복귀')).toList();
-              _attendeesRecorvline = _rcnLogMessages.length;
-              logger.warning('해제복귀 num:'+_attendeesRecorvline.toString());
-
-
-              _beltLogMessages =[];
-              _beltLogMessages =
-                  _accidentMessages.where((element) => element.message.startsWith('턱끈연결')).toList();
-              _attendeesbelt = _beltLogMessages.length;
-              logger.warning('턱끈연결 num:'+_attendeesbelt.toString());
+                  _rcnLogMessages =[];
+                  _rcnLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('연결복귀')).toList();
+                  _attendeesRecorvline = _rcnLogMessages.length;
+                  logger.warning('해제복귀 num:'+_attendeesRecorvline.toString());
 
 
-              _ubeltLogMessages =[];
-              _ubeltLogMessages =
-                  _accidentMessages.where((element) => element.message.startsWith('턱끈해제')).toList();
-              _attendeesDissbelt = _ubeltLogMessages.length;
-              logger.warning('턱끈해제 num:'+_attendeesDissbelt.toString());
+                  _beltLogMessages =[];
+                  _beltLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('턱끈연결')).toList();
+                  _attendeesbelt = _beltLogMessages.length;
+                  logger.warning('턱끈연결 num:'+_attendeesbelt.toString());
 
 
-              _etcLogMessages =[];
-              _etcLogMessages =
-                  _accidentMessages.where((element) => element.message.startsWith('기타등등')).toList();
-              _attendeesetc = _etcLogMessages.length;
-              logger.warning('기타등등 num:'+_attendeesetc.toString());
+                  _ubeltLogMessages =[];
+                  _ubeltLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('턱끈해제')).toList();
+                  _attendeesDissbelt = _ubeltLogMessages.length;
+                  logger.warning('턱끈해제 num:'+_attendeesDissbelt.toString());
 
-              });
 
-          _guestBookSubscription?.cancel();
-          _guestBookSubscription = FirebaseFirestore.instance
-              .collection('guestbook2')
-              .where('workzone', isEqualTo: workZone)
-              //.where('uid', isNotEqualTo: user.uid)
-              .orderBy('timestamp', descending: true)
-              .limit(1)
-              .snapshots()
-              .listen((snapshot) {
-                if(attendeesFirst==true) {
-                  DateTime date = DateTime.fromMillisecondsSinceEpoch(
-                      snapshot.docs[0].data()['timestamp']);
-                  String formattedDate = DateFormat('MM월dd일').format(date);
-                  String formattedTime = DateFormat('HH시mm분').format(date);
-                  String uid = snapshot.docs[0].data()['userId'];
-                  String name = snapshot.docs[0].data()['name'];
-                  String message = snapshot.docs[0].data()['text'];
-                  String location = snapshot.docs[0].data()['latitude'].toString() +
-                      ', ' +
-                      snapshot.docs[0].data()['longitude'].toString();
-                  logger.warning('FireStore[listen all] -------- [' +
-                      snapshot.docs.length.toString() + '] ' + name + ': ' + message);
+                  _etcLogMessages =[];
+                  _etcLogMessages =
+                      _accidentMessages.where((element) => element.message.startsWith('기타등등')).toList();
+                  _attendeesetc = _etcLogMessages.length;
+                  logger.warning('기타등등 num:'+_attendeesetc.toString());
 
-                  AccidentMessage thisTime = AccidentMessage(
-                    uid: uid,
-                    name: name,
-                    time: formattedTime,
-                    date: formattedDate,
-                    message: message,
-                    location: location,
-                    timestamp: date,
-                  );
-                  _accidentMessages.insert(
-                    0,
-                    thisTime,
-                  );
-                  logger.warning('acc' + _accidentMessages.length.toString());
-                  if (message == '무활동반응') {
-                    _iaLogMessages.insert(
+                });
+
+                _guestBookSubscription?.cancel();
+                _guestBookSubscription = FirebaseFirestore.instance
+                    .collection('guestbook2')
+                    .where('workzone', isEqualTo: workZone)
+                //.where('uid', isNotEqualTo: user.uid)
+                    .orderBy('timestamp', descending: true)
+                    .limit(1)
+                    .snapshots()
+                    .listen((snapshot) {
+                  if(attendeesFirst==true) {
+                    DateTime date = DateTime.fromMillisecondsSinceEpoch(
+                        snapshot.docs[0].data()['timestamp']);
+                    String formattedDate = DateFormat('MM월dd일').format(date);
+                    String formattedTime = DateFormat('HH시mm분').format(date);
+                    String uid = snapshot.docs[0].data()['userId'];
+                    String name = snapshot.docs[0].data()['name'];
+                    String message = snapshot.docs[0].data()['text'];
+                    String location = snapshot.docs[0].data()['latitude'].toString() +
+                        ', ' +
+                        snapshot.docs[0].data()['longitude'].toString();
+                    logger.warning('FireStore[listen all] -------- [' +
+                        snapshot.docs.length.toString() + '] ' + name + ': ' + message);
+
+                    AccidentMessage thisTime = AccidentMessage(
+                      uid: uid,
+                      name: name,
+                      time: formattedTime,
+                      date: formattedDate,
+                      message: message,
+                      location: location,
+                      timestamp: date,
+                    );
+                    _accidentMessages.insert(
                       0,
                       thisTime,
                     );
-                    if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          thisTime.name, formattedDate + formattedTime,
-                          '무활동반응', location ,300);
-                    }
-                    _attendeesia++;
-                  } else if (message == '추락사고') {
-                    _ffLogMessages.insert(
-                      0,
-                      thisTime,
-                    );
-                    if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          thisTime.name, formattedDate + formattedTime,
-                          '추락사고', location ,300);
-                    }
-                    _attendeesff++;
-                  } else if (message == '충격사고') {
-                    _imLogMessages.insert(
-                      0,
-                      thisTime,
-                    );
-                    if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          thisTime.name, formattedDate + formattedTime,
-                          '충격사고', location ,300);
-                    }
-                    _attendeesim++;
-                  } else if (message == '위급상황') {
-                    _emLogMessages.insert(
-                      0,
-                      thisTime,
-                    );
-                    if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          thisTime.name, formattedDate + formattedTime,
-                          '위급상황', location ,300);
-                    }
-                    _attendeesem++;
-                  } else if (message == '상황해제') {
-                    _uemLogMessages.insert(
-                      0,
-                      thisTime,
-                    );
-                    if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/relEvent.mp3');
-                      _setLoopMode(LoopMode.off);
-                      _playSound();
-                      addNPopupManager(
-                          thisTime.name, formattedDate + formattedTime,
-                          '상황해제', location ,300);
-                    }
-                    _attendeesemrels++;
-                  } else if (message == '지도노티') {
-                   // FirebaseFirestore.instance.collection("guestbook").doc(snapshot.docs[0].id).delete().then((value){
+                    logger.warning('acc' + _accidentMessages.length.toString());
+                    if (message == '무활동반응') {
+                      _iaLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            thisTime.name, formattedDate + formattedTime,
+                            '무활동반응', location ,300);
+                      }
+                      _attendeesia++;
+                    } else if (message == '추락사고') {
+                      _ffLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            thisTime.name, formattedDate + formattedTime,
+                            '추락사고', location ,300);
+                      }
+                      _attendeesff++;
+                    } else if (message == '충격사고') {
+                      _imLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            thisTime.name, formattedDate + formattedTime,
+                            '충격사고', location ,300);
+                      }
+                      _attendeesim++;
+                    } else if (message == '위급상황') {
+                      _emLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            thisTime.name, formattedDate + formattedTime,
+                            '위급상황', location ,300);
+                      }
+                      _attendeesem++;
+                    } else if (message == '상황해제') {
+                      _uemLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        logger.warning(player.playerState);
+                        _setLoopMode(LoopMode.off);
+                        _setAsset('assets/audio/relEvent.mp3');
+                        _playSound();
+                        addNPopupManager(
+                            thisTime.name, formattedDate + formattedTime,
+                            '상황해제', location ,300);
+                      }
+                      _attendeesemrels++;
+                    } else if (message == '지도노티') {
+                      // FirebaseFirestore.instance.collection("guestbook").doc(snapshot.docs[0].id).delete().then((value){
                       logger.warning("지도노티 delete Success!");
-                   // });
-                    List<String> strLocation;
-                    strLocation = location.split(', ');
-                    Navigator.push(navigatorKey.currentContext!, MaterialPageRoute(
-                        builder: (context) =>
-                            Second(latitude: double.parse(strLocation[0]), longitude: double.parse(strLocation[1]))));
-                  } else if (message == '연결해제') {
-                    _ucnLogMessages.insert(
-                      0,
-                      thisTime,
-                    );
-                    if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          thisTime.name, formattedDate + formattedTime,
-                          '연결해제', location ,300);
+                      // });
+                      List<String> strLocation;
+                      strLocation = location.split(', ');
+                      Navigator.push(navigatorKey.currentContext!, MaterialPageRoute(
+                          builder: (context) =>
+                              Second(latitude: double.parse(strLocation[0]), longitude: double.parse(strLocation[1]))));
+                    } else if (message == '연결해제') {
+                      _ucnLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            thisTime.name, formattedDate + formattedTime,
+                            '연결해제', location ,300);
+                      }
+                      _attendeesoffline++;
+                    } else if (message == '연결복귀') {
+                      _rcnLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            thisTime.name, formattedDate + formattedTime,
+                            '연결복귀',location ,300);
+                      }
+                      _attendeesRecorvline++;
+                    } else if (message == '턱끈연결') {
+                      _beltLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      _attendeesbelt++;
+                    } else if (message == '턱끈해제') {
+                      _ubeltLogMessages.insert(
+                        0,
+                        thisTime,
+                      );
+                      _attendeesDissbelt++;
                     }
-                    _attendeesoffline++;
-                  } else if (message == '연결복귀') {
-                    _rcnLogMessages.insert(
-                      0,
-                      thisTime,
-                    );
-                    if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          thisTime.name, formattedDate + formattedTime,
-                          '연결복귀',location ,300);
-                    }
-                    _attendeesRecorvline++;
-                  } else if (message == '턱끈연결') {
-                    _beltLogMessages.insert(
-                      0,
-                      thisTime,
-                    );
-                    _attendeesbelt++;
-                  } else if (message == '턱끈해제') {
-                    _ubeltLogMessages.insert(
-                      0,
-                      thisTime,
-                    );
-                    _attendeesDissbelt++;
+                    notifyListeners();
+                  } else {
+                    _attendeesFirst = true;
                   }
                   notifyListeners();
-                } else {
-                  _attendeesFirst = true;
-                }
-                notifyListeners();
-              });
-        }
-        else {
-
-          await FirebaseFirestore.instance
-              .collection('guestbook2')
-              .where('userId',isEqualTo:user.uid) //jay user
-              .orderBy('timestamp', descending: true)
-              .get().then((value) {
-                logger.warning('FireStore[read] -------- 모든 개인 데이터');
-                _accidentMessages = [];
-                value.docs.forEach((document) {
-                  DateTime date = DateTime.fromMillisecondsSinceEpoch( document.data()['timestamp']);
-                  String formattedDate = DateFormat('MM월dd일').format(date);
-                  String formattedTime = DateFormat('HH시mm분').format(date);
-
-                  //logger.warning(document.data()['text']);
-
-                  _accidentMessages.add(
-                    AccidentMessage(
-                      uid: document.data()['userId'],
-                      name: document.data()['name'],
-                      time: formattedTime,
-                      message: document.data()['text'],
-                      date: formattedDate,
-                      location: document.data()['latitude'].toString() + ', ' +
-                          document.data()['longitude'].toString(),
-                      timestamp: date,
-                    ),
-                  );
                 });
-              });
+              }
+              else {
 
-            _guestBookSubscription?.cancel();
-          _guestBookSubscription = FirebaseFirestore.instance
-              .collection('guestbook2')
-              .where('workzone', isEqualTo: workZone)
-              .orderBy('timestamp', descending: true)
-              .limit(1)
-              .snapshots()
-              .listen((snapshot) {
-                if(attendeesFirst==true) {
-                  DateTime date = DateTime.fromMillisecondsSinceEpoch(
-                      snapshot.docs[0].data()['timestamp']);
-                  String formattedDate = DateFormat('MM월dd일').format(date);
-                  String formattedTime = DateFormat('HH시mm분').format(date);
-                  String uid = snapshot.docs[0].data()['userId'];
-                  String name = snapshot.docs[0].data()['name'];
-                  String message = snapshot.docs[0].data()['text'];
-                  String location = snapshot.docs[0].data()['latitude'].toString() +
-                      ', ' +
-                      snapshot.docs[0].data()['longitude'].toString();
-                  logger.warning('FireStore[listen all] -------- [' +
-                      snapshot.docs.length.toString() + '] ' + name + ': ' + message);
+                await FirebaseFirestore.instance
+                    .collection('guestbook2')
+                    .where('userId',isEqualTo:user.uid) //jay user
+                    .orderBy('timestamp', descending: true)
+                    .get().then((value) {
+                  logger.warning('FireStore[read] -------- 모든 개인 데이터');
+                  _accidentMessages = [];
+                  value.docs.forEach((document) {
+                    DateTime date = DateTime.fromMillisecondsSinceEpoch( document.data()['timestamp']);
+                    String formattedDate = DateFormat('MM월dd일').format(date);
+                    String formattedTime = DateFormat('HH시mm분').format(date);
 
-                  logger.warning('acc' + _accidentMessages.length.toString());
-                  if(iuserId==uid) {
-                    _accidentMessages.insert(0,
+                    //logger.warning(document.data()['text']);
+
+                    _accidentMessages.add(
                       AccidentMessage(
-                        uid: snapshot.docs[0].data()['userId'],
-                        name: snapshot.docs[0].data()['name'],
+                        uid: document.data()['userId'],
+                        name: document.data()['name'],
                         time: formattedTime,
-                        message: snapshot.docs[0].data()['text'],
+                        message: document.data()['text'],
                         date: formattedDate,
-                        location: snapshot.docs[0].data()['latitude']
-                            .toString() + ', ' +
-                            snapshot.docs[0].data()['longitude'].toString(),
+                        location: document.data()['latitude'].toString() + ', ' +
+                            document.data()['longitude'].toString(),
                         timestamp: date,
                       ),
                     );
-                  }
+                  });
+                });
 
-                  if (message == '무활동반응') {
-                    if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          name, formattedDate + formattedTime,
-                          '무활동반응',location , 300);
+                _guestBookSubscription?.cancel();
+                _guestBookSubscription = FirebaseFirestore.instance
+                    .collection('guestbook2')
+                    .where('workzone', isEqualTo: workZone)
+                    .orderBy('timestamp', descending: true)
+                    .limit(1)
+                    .snapshots()
+                    .listen((snapshot) {
+                  if(attendeesFirst==true) {
+                    DateTime date = DateTime.fromMillisecondsSinceEpoch(
+                        snapshot.docs[0].data()['timestamp']);
+                    String formattedDate = DateFormat('MM월dd일').format(date);
+                    String formattedTime = DateFormat('HH시mm분').format(date);
+                    String uid = snapshot.docs[0].data()['userId'];
+                    String name = snapshot.docs[0].data()['name'];
+                    String message = snapshot.docs[0].data()['text'];
+                    String location = snapshot.docs[0].data()['latitude'].toString() +
+                        ', ' +
+                        snapshot.docs[0].data()['longitude'].toString();
+                    logger.warning('FireStore[listen all] -------- [' +
+                        snapshot.docs.length.toString() + '] ' + name + ': ' + message);
+
+                    logger.warning('acc' + _accidentMessages.length.toString());
+                    if(iuserId==uid) {
+                      _accidentMessages.insert(0,
+                        AccidentMessage(
+                          uid: snapshot.docs[0].data()['userId'],
+                          name: snapshot.docs[0].data()['name'],
+                          time: formattedTime,
+                          message: snapshot.docs[0].data()['text'],
+                          date: formattedDate,
+                          location: snapshot.docs[0].data()['latitude']
+                              .toString() + ', ' +
+                              snapshot.docs[0].data()['longitude'].toString(),
+                          timestamp: date,
+                        ),
+                      );
                     }
-                  } else if (message == '추락사고') {
-                    if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          name, formattedDate + formattedTime,
-                          '추락사고', location ,300);
+
+                    if (message == '무활동반응') {
+                      if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            name, formattedDate + formattedTime,
+                            '무활동반응',location , 300);
+                      }
+                    } else if (message == '추락사고') {
+                      if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            name, formattedDate + formattedTime,
+                            '추락사고', location ,300);
+                      }
+                    } else if (message == '충격사고') {
+                      if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            name, formattedDate + formattedTime,
+                            '충격사고',location , 300);
+                      }
+                    } else if (message == '위급상황') {
+                      if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound();
+                        addNPopupManager(
+                            name, formattedDate + formattedTime,
+                            '위급상황', location ,300);
+                      }
+                    } else if (message == '상황해제') {
+                      if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
+                          DateTime.now())) {
+                        _stopSound();
+                        _setLoopMode(LoopMode.off);
+                        _setAsset('assets/audio/relEvent.mp3');
+                        _playSound();
+
+                        addNPopupManager(
+                            name, formattedDate + formattedTime,
+                            '상황해제', location ,300);
+                      }
                     }
-                  } else if (message == '충격사고') {
-                    if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          name, formattedDate + formattedTime,
-                          '충격사고',location , 300);
-                    }
-                  } else if (message == '위급상황') {
-                    if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();
-                      addNPopupManager(
-                          name, formattedDate + formattedTime,
-                          '위급상황', location ,300);
-                    }
-                  } else if (message == '상황해제') {
-                    if (uid!=user.uid &&date.add(Duration(minutes: 5)).isAfter(
-                        DateTime.now())) {
-                      _stopSound();
-                      _setAsset('assets/audio/relEvent.mp3');
-                      _setLoopMode(LoopMode.off);
-                      _playSound();
-                      addNPopupManager(
-                          name, formattedDate + formattedTime,
-                          '상황해제', location ,300);
-                    }
+                  } else {
+                    _attendeesFirst = true;
                   }
-                } else {
-                  _attendeesFirst = true;
-                }
-                notifyListeners();
-              });
-        }
+                  notifyListeners();
+                });
+              }
+
+              notifyListeners();
+
+
+        });
 
       }
       else {
-        _stopWatchTimer.dispose();
+        //if(_stopWatchTimer.isRunning==true)
+        //    _stopWatchTimer.onExecute.add(StopWatchExecute.stop);
         helmetElaspedTime=0;
 
         _attendeesFirst = false;
@@ -2401,9 +2424,10 @@ class ApplicationState extends ChangeNotifier {
         listenEtc?.cancel();*/
         listenWorker?.cancel();
         _timer_geo?.cancel();
-        displayPhoneNumber = '사용자 정보없음';
-        displayName = '사용자 없음';
-        displayEmail = '사용자 정보없음';
+        workZone = '사용자 정보 없음';
+        displayPhoneNumber = '사용자 정보 없음';
+        displayName = '사용자 정보 없음';
+        displayEmail = '사용자 정보 없음';
         logger.warning('logout ');
         bTdevice?.disconnect();
         logState = false;
@@ -2411,6 +2435,8 @@ class ApplicationState extends ChangeNotifier {
         _guestBookMessages = [];
         _guestBookSubscription?.cancel();
         _accidentMessages = [];
+
+        _workerLogMessages = [];
         notifyListeners();
        // Restart.restartApp();
       }
@@ -2609,14 +2635,39 @@ class ApplicationState extends ChangeNotifier {
   }
 
   // ignore: avoid_void_async
-  void registerAccount(String email, String displayName, String password, String role, String workzone
+  Future<void> registerAccount(String email, String displayName, String phone, String password, String role, String workzone,
       void Function(FirebaseAuthException e) errorCallback) async {
+
     try {
+
+     /* await Future.wait<void>([
+        FirebaseAuth.instance
+            .createUserWithEmailAndPassword(email: email, password: password).then((ret) => credential=ret),
+        credential.user!.updateProfile(displayName: displayName),
+        FirebaseFirestore.instance
+            .collection('user')
+            .doc(credential.user!.uid)
+            .set({'role': role, 'workzone': workzone, 'uid': credential.user!.uid, 'name':displayName})  ,
+      ]);
+
+      */
 
       var credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
-      // ignore: deprecated_member_use
       await credential.user!.updateProfile(displayName: displayName);
+
+      var userDoc =  FirebaseFirestore.instance
+          .collection('user')
+          .doc(credential.user!.uid);
+      await userDoc.set({'role': role, 'workzone': workzone, 'uid': credential.user!.uid, 'name':displayName, 'phone':phone});
+      //beltState
+
+/*
+      await delayed(const Duration(milliseconds: 500), () {
+        logger.warning('Future.delayed(Duration(milliseconds: 500)');
+        // Do something
+      });
+*/
     } on FirebaseAuthException catch (e) {
       errorCallback(e);
     }
@@ -4540,7 +4591,7 @@ class _HomePageState extends State<HomePage> {
                     else if(btMessage.contains('EM')) {
                       state = '위급상황';
                       _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
+                      _setLoopMode(LoopMode.off);
                     }
                     else if(btMessage.contains('IA')) {
                       state = '무활동반응';

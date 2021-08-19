@@ -39,9 +39,12 @@ class Authentication extends StatelessWidget {
   ) signInWithEmailAndPassword;
   final void Function() cancelRegistration;
   final void Function(
-    String email,
-    String displayName,
-    String password,
+      String email,
+      String displayName,
+      String phone,
+      String password,
+      String role,
+      String workzone,
     void Function(Exception e) error,
   ) registerAccount;
   final void Function() signOut;
@@ -85,12 +88,18 @@ class Authentication extends StatelessWidget {
           registerAccount: (
             email,
             displayName,
+            phone,
             password,
+              role,
+              workzone,
           ) {
             registerAccount(
                 email,
                 displayName,
+                phone,
                 password,
+                role,
+                workzone,
                 (e) =>
                     _showErrorDialog(context, '메일 계정 생성 실패', e));
           },
@@ -236,18 +245,22 @@ class RegisterForm extends StatefulWidget {
     required this.email,
   });
   final String email;
-  final void Function(String email, String displayName, String password)
+  final void Function(String email, String displayName,String phone, String password,String role, String workzone)
       registerAccount;
   final void Function() cancel;
   @override
   _RegisterFormState createState() => _RegisterFormState();
 }
 
+int _valueworkzone = 1;
+int _valuerole = 1;
+
 class _RegisterFormState extends State<RegisterForm> {
   final _formKey = GlobalKey<FormState>(debugLabel: '_RegisterFormState');
   final _emailController = TextEditingController();
   final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _phoneNumberController = TextEditingController();
 
   @override
   void initState() {
@@ -257,8 +270,10 @@ class _RegisterFormState extends State<RegisterForm> {
 
   @override
   Widget build(BuildContext context) {
+
     return Column(
       children: [
+        const SizedBox(height:25),
         const Header('계정 생성하기'),
         Padding(
           padding: const EdgeInsets.all(8.0),
@@ -300,6 +315,21 @@ class _RegisterFormState extends State<RegisterForm> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: TextFormField(
+                    controller: _phoneNumberController,
+                    decoration: const InputDecoration(
+                      hintText: '휴대폰 번호를 입력해 주세요',
+                    ),
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return '휴대폰 번호를 입력해 주세요';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
                       hintText: '암호',
@@ -313,6 +343,107 @@ class _RegisterFormState extends State<RegisterForm> {
                     },
                   ),
                 ),
+
+                const SizedBox(height:25),
+                const Center(child: Header('추가 정보')),
+
+                const SizedBox(height:10),
+                Row(
+                  children: [
+                    const Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text('작업 현장명:',
+                        style:TextStyle(
+                          //fontSize: 18,
+                          //color: color,
+                          //fontWeight: FontWeight.w700 ,
+                        ),
+                      ),
+                    ),
+                    DropdownButton(
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                        iconSize: 24,
+                        elevation: 16,
+                        style: const TextStyle(
+                            color: Colors.deepPurple
+                        ),
+                        underline: Container(
+                          height: 2,
+                          color: Colors.deepPurpleAccent,
+                        ),
+                        value: _valueworkzone,
+                        items: [
+                          const DropdownMenuItem(
+                            child: Text("부산 A지구"),
+                            value: 1,
+                          ),
+                          const DropdownMenuItem(
+                            child: Text("부산 B지구"),
+                            value: 2,
+                          ),
+                          const DropdownMenuItem(
+                            child: Text("서울 가산지구"),
+                            value: 3,
+                          ),
+                          const DropdownMenuItem(
+                            child: Text("수원 고등지구"),
+                            value: 4,
+                          )
+                        ],
+                        onChanged: ( int? value) {
+                          setState(() {
+                            logger.warning('value ${value}');
+                            _valueworkzone = value!;
+                          });
+                        },
+                        hint:Text("Select item")
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text('관리/작업 직무 :',
+                        style:TextStyle(
+                          //fontSize: 18,
+                          //color: color,
+                          //fontWeight: FontWeight.w700 ,
+                        ),
+                      ),
+                    ),
+                    DropdownButton(
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                        iconSize: 24,
+                        elevation: 16,
+                        style: const TextStyle(
+                            color: Colors.deepPurple
+                        ),
+                        underline: Container(
+                          height: 2,
+                          color: Colors.deepPurpleAccent,
+                        ),
+                        value: _valuerole,
+                        items: [
+                          const DropdownMenuItem(
+                            child: Text("작업자"),
+                            value: 1,
+                          ),
+                          const DropdownMenuItem(
+                            child: Text("관리자"),
+                            value: 2,
+                          )
+                        ],
+                        onChanged: ( int? value) {
+                          setState(() {
+                            logger.warning('value ${value}');
+                            _valuerole = value!;
+                          });
+                        },
+                        hint:Text("Select item")
+                    ),
+                  ],
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Row(
@@ -324,12 +455,15 @@ class _RegisterFormState extends State<RegisterForm> {
                       ),
                       const SizedBox(width: 16),
                       StyledButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (_formKey.currentState!.validate()) {
-                            widget.registerAccount(
-                              _emailController.text,
-                              _displayNameController.text,
-                              _passwordController.text,
+                             widget.registerAccount(
+                               _emailController.text,
+                               _displayNameController.text,
+                               _phoneNumberController.text,
+                               _passwordController.text,
+                               (_valuerole==1)?'worker':'manager',
+                               (_valueworkzone==1)?'부산 A지구':(_valueworkzone==2)?'부산 B지구':(_valueworkzone==3)?'서울 가산지구':'수원 고등지구',
                             );
                           }
                         },
