@@ -36,7 +36,7 @@ import 'widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:stop_watch_timer/stop_watch_timer.dart';
-
+import 'package:background_location/background_location.dart';
 
 final logger = SimpleLogger();
 
@@ -818,12 +818,12 @@ void _setLoopMode(LoopMode mode) {
 }
 
 
-void setMyLocation(String uid, GeoPoint location, bool beltState, int helmetElaspedTime) {
+void setMyLocation(String uid, GeoPoint location, bool beltState, int helmetElaspedTime, DateTime? lastWokDay ) {
   logger.warning('setMyLocation: ${beltState},${helmetElaspedTime} ');
   final userDoc =  FirebaseFirestore.instance
       .collection('user')
       .doc(uid);
-  userDoc.update({'geopoint': location, 'belt': beltState, 'helmettime': helmetElaspedTime});
+  userDoc.update({'geopoint': location, 'belt': beltState, 'helmettime': helmetElaspedTime, 'lastworkday': timeToWorkStart!.millisecondsSinceEpoch, });
   //beltState
 }
 
@@ -1004,7 +1004,7 @@ class _WorkerListState extends State<WorkerList> {
               borderRadius: BorderRadius.circular(10.0),
             ),
             child: (!snapshot.hasData)?
-            CircularProgressIndicator(
+            const CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation(Colors.grey),
             ):
             Consumer<ApplicationState>(
@@ -1017,12 +1017,15 @@ class _WorkerListState extends State<WorkerList> {
               itemBuilder: (context, index) {
                 final WorkerListMessage item = appState.workerLogMessages[index];
                 return Container(
-                  margin: EdgeInsets.all(fixPadding * 0.2),
+                  alignment: Alignment.topCenter  ,
+                  padding: EdgeInsets.all(fixPadding * 0),// const EdgeInsets.symmetric(vertical: 0),
+                  //height: ScreenUtil().setHeight(84),
+                  margin: EdgeInsets.all(fixPadding * 0.25),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10.0),
                   ),
-                  child: ListTile(
+                  child:(timeToWorkStart ==item.lastworkday)? ListTile(
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(
                           builder: (context) =>
@@ -1033,18 +1036,18 @@ class _WorkerListState extends State<WorkerList> {
                                   state: item.name + ' 작업자')));
                     },
                     leading: InkWell(
-                        child: const CircleAvatar(
-                          backgroundColor: Colors.green,
-                          radius: 20,
+                        child:  CircleAvatar(
+                          backgroundColor: Colors.deepPurple,
+                          radius: ScreenUtil().setWidth(16),
                           child:  Icon(
                             Icons.call,
                             color: Colors.white,
-                            size: 18.0,
+                            size: ScreenUtil().setWidth(16),
                           ),
                           /* Text(item.name[0],
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 24.0,
+                            fo  ntSize: 24.0,
                           )
                       ),*/
                         ),
@@ -1054,77 +1057,267 @@ class _WorkerListState extends State<WorkerList> {
                     ),
 
                     title: Text(item.name,
-                        style: const TextStyle(
+                        style:  TextStyle(
                           color: Colors.black,
-                          fontSize: 18,
+                          fontSize: ScreenUtil().setSp(19),
                         )),
                     subtitle:  Text(item.phone,
-                        style: const TextStyle(
+                        style:  TextStyle (
                           //color: Colors.black,
-                          fontSize: 10,
+                          fontSize: ScreenUtil().setSp(12),
                         )),
-                    trailing: SizedBox(
-                      width: ScreenUtil().setWidth(140),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                    trailing: Container(
+                      width: ScreenUtil().setWidth(142),
+                      height: ScreenUtil().setHeight(48),
+                      alignment: Alignment.centerRight,
+                      margin:  EdgeInsets.only(left:fixPadding * 0.5,right:fixPadding * 0),
+                      padding: const EdgeInsets.symmetric(vertical: 0),
+                      //alignment: Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                        color: Colors.white,//deepPurple.shade100,
+                        borderRadius: BorderRadius.circular(4.0),
+                        /*boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 0,
+                                blurRadius: 5,
+                                offset: Offset(0,2),
+                              ),
+                            ],*/
+                      ),
+
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(3.0), //or 15.0
-                            child: Container(
-                              height: ScreenUtil().setHeight(30),
-                              width: ScreenUtil().setWidth(40),
-                              color: Colors.deepPurple,
-                              alignment: Alignment.center,
-                              child:  Text(StopWatchTimer.getDisplayTime(item.worktime!, second:false,milliSecond:false ) ,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: ScreenUtil().setSp(14),
-                                  )
+                          Container(
+                            margin:  EdgeInsets.only(left:fixPadding * 0.25,right:fixPadding * 0.25,bottom:fixPadding * 0.15,top:fixPadding * 0.0),
+                            decoration: BoxDecoration(
+                              color: Colors.deepPurple.shade50,
+                              borderRadius: BorderRadius.circular(3.0),
+                              /*boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 0,
+                                blurRadius: 5,
+                                offset: Offset(0,2),
+                              ),
+                            ],*/
+                            ),
+                            height: ScreenUtil().setHeight(19),
+                            //width: ScreenUtil().setWidth(140),
+                            alignment: Alignment.center,
+                            child:  Text('  '+item.lastworkday.toString().substring(0,10)+'  ' ,
+                                style: TextStyle(
+                                  color: Colors.black.withOpacity(0.7),
+                                  fontSize: ScreenUtil().setSp(12),
+                                ),
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0), //or 15.0
+                                child: Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(45),
+                                  color: Colors.deepPurple,
+                                  alignment: Alignment.center,
+                                  child:  Text(StopWatchTimer.getDisplayTime(item.worktime!, second:false,milliSecond:false ) ,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: ScreenUtil().setSp(14),
+                                      )
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 1.5),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0), //or 15.0
+                                child:(item.belt==true) ? Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(45),
+                                  color: Colors.deepPurple,
+                                  alignment: Alignment.center,
+                                  child: Text('착용중',
+                                      style:  TextStyle(
+                                        color: Colors.white,
+                                        fontSize:  ScreenUtil().setSp(14),
+                                      )
+                                  ),
+                                ) :  Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(45),
+                                  color: Colors.red.withOpacity(0.85),
+                                  alignment: Alignment.center,
+                                  child: Text('미착용',
+                                      style:  TextStyle(
+                                        color: Colors.white,
+                                        fontSize: ScreenUtil().setSp(14),
+                                      )
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 1.5),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0), //or 15.0
+                                child: Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(45),
+                                  color: Colors.deepPurple,
+                                  alignment: Alignment.center,
+                                  child: Text(item.accident.toString(),
+                                      style:  TextStyle(
+                                        color: Colors.white,
+                                        fontSize: ScreenUtil().setSp(14),
+                                      )
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ):ListTile(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(
+                          builder: (context) =>
+                              WorkerDetailPage(
+                                  latitude: item.location!.latitude /*37.4836*/,
+                                  longitude: item.location!.longitude /*126.8954*/,
+                                  uid: item.uid,
+                                  state: item.name + ' 작업자')));
+                    },
+                    leading: InkWell(
+                        child: CircleAvatar(
+                          backgroundColor: Colors.grey,
+                          radius: ScreenUtil().setWidth(14),
+                          child:  Icon(
+                            Icons.call,
+                            color: Colors.white,
+                            size: ScreenUtil().setWidth(14),
+                          ),
+                          /* Text(item.name[0],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fo  ntSize: 24.0,
+                          )
+                      ),*/
+                        ),
+                        onTap: () {
+                          launch('tel://'+item.phone);
+                        }
+                    ),
+
+                    title: Text(item.name,
+                        style:  TextStyle(
+                          color: Colors.black,
+                          fontSize: ScreenUtil().setSp(16),
+                        )),
+                    subtitle:  Text(item.phone,
+                        style:  TextStyle (
+                          //color: Colors.black,
+                          fontSize: ScreenUtil().setSp(10),
+                        )),
+                    trailing: Container(
+                      width: ScreenUtil().setWidth(142),
+                      height: ScreenUtil().setHeight(48),
+                      alignment: Alignment.centerRight,
+                      margin:  EdgeInsets.only(left:fixPadding * 0.5,right:fixPadding * 0),
+                      padding: const EdgeInsets.symmetric(vertical: 0),
+                      //alignment: Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                        color: Colors.white,//deepPurple.shade100,
+                        borderRadius: BorderRadius.circular(4.0),
+                        /*boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 0,
+                                blurRadius: 5,
+                                offset: Offset(0,2),
+                              ),
+                            ],*/
+                      ),
+
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            margin:  EdgeInsets.only(left:fixPadding * 0.25,right:fixPadding * 0.25,bottom:fixPadding * 0.15,top:fixPadding * 0.0),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(3.0),
+                              /*boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 0,
+                                blurRadius: 5,
+                                offset: Offset(0,2),
+                              ),
+                            ],*/
+                            ),
+                            height: ScreenUtil().setHeight(19),
+                            //width: ScreenUtil().setWidth(40),
+                            alignment: Alignment.center,
+                            child:  Text('  '+item.lastworkday.toString().substring(0,10)+'  ' ,
+                              style: TextStyle(
+                                color: Colors.black.withOpacity(0.7),
+                                fontSize: ScreenUtil().setSp(12),
                               ),
                             ),
                           ),
-                          SizedBox(width: 5),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(3.0), //or 15.0
-                            child:(item.belt==true) ? Container(
-                              height: ScreenUtil().setHeight(30),
-                              width: ScreenUtil().setWidth(40),
-                              color: Colors.deepPurple,
-                              alignment: Alignment.center,
-                              child: Text('착용중',
-                                  style:  TextStyle(
-                                    color: Colors.white,
-                                    fontSize:  ScreenUtil().setSp(14),
-                                  )
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0), //or 15.0
+                                child: Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(45),
+                                  color: Colors.grey,
+                                  alignment: Alignment.center,
+                                  child:  Text('00:00',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: ScreenUtil().setSp(14),
+                                      )
+                                  ),
+                                ),
                               ),
-                            ) :  Container(
-                              height: ScreenUtil().setHeight(30),
-                              width: ScreenUtil().setWidth(40),
-                              color: Colors.red,
-                              alignment: Alignment.center,
-                              child: Text('미착용',
-                                  style:  TextStyle(
-                                    color: Colors.white,
-                                    fontSize: ScreenUtil().setSp(14),
-                                  )
+                              const SizedBox(width: 1.5),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0), //or 15.0
+                                child: Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(45),
+                                  color: Colors.grey,
+                                  alignment: Alignment.center,
+                                  child: Text('미착용',
+                                      style:  TextStyle(
+                                        color: Colors.white,
+                                        fontSize: ScreenUtil().setSp(14),
+                                      )
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          SizedBox(width: 5),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(3.0), //or 15.0
-                            child: Container(
-                              height: ScreenUtil().setHeight(30),
-                              width: ScreenUtil().setWidth(40),
-                              color: (timeToWorkStart ==item.lastworkday)?Colors.deepPurple:Colors.red,
-                              alignment: Alignment.center,
-                              child: Text(item.accident.toString(),
-                                  style:  TextStyle(
-                                    color: Colors.white,
-                                    fontSize: ScreenUtil().setSp(14),
-                                  )
+                              const SizedBox(width: 1.5),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0), //or 15.0
+                                child: Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(45),
+                                  color: Colors.grey,
+                                  alignment: Alignment.center,
+                                  child: Text('0',
+                                      style:  TextStyle(
+                                        color: Colors.white,
+                                        fontSize: ScreenUtil().setSp(14),
+                                      )
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ],
                       ),
@@ -1888,9 +2081,9 @@ class ApplicationState extends ChangeNotifier {
         listenWhoAmI?.cancel();
         listenWhoAmI=FirebaseFirestore.instance
             .collection('user')
-            .where('uid',isEqualTo:user.uid)
-             .snapshots()
-             .listen
+            .where('uid',isEqualTo:iuserId)
+            .snapshots()
+            .listen
             /*.get().then*/((value) async {
               displayName = (value.docs[0].data()['name']==null)? '무명':value.docs[0].data()['name'];
               attendees = (value.docs[0].data()['beltcount']==null)? 0:value.docs[0].data()['beltcount'];
@@ -1901,12 +2094,16 @@ class ApplicationState extends ChangeNotifier {
 
               logger.warning('name: ${displayName}');
               logger.warning('phone: ${user.phoneNumber}');
-
               logger.warning('read attendees : ${attendees}');
-              listenWhoAmI?.cancel();
-              notifyListeners();
+              logger.warning('timeToWorkStart2 : ${timeToWorkStart}');
 
-              if(timeToWorkStart !=lastWokDay)
+
+              logger.warning('lastworkDay2 : ${lastWokDay}, lastworkDay: ${(value.docs[0].data()['lastworkday']==null)?0:value.docs[0].data()['lastworkday']}');
+
+              listenWhoAmI?.cancel();
+
+
+              if(timeToWorkStart!=lastWokDay)
               {
                 logger.warning('today is not today');
                 lastWokDay = timeToWorkStart;
@@ -1914,12 +2111,9 @@ class ApplicationState extends ChangeNotifier {
                 helmetElaspedTime =0;
                 final userDoc =  FirebaseFirestore.instance
                     .collection('user')
-                    .doc(user.uid);
-                userDoc.update({'lastworkday': timeToWorkStart!.millisecondsSinceEpoch, 'helmettime': helmetElaspedTime});
+                    .doc(iuserId);
+                userDoc.update({'lastworkday': timeToWorkStart!.millisecondsSinceEpoch, 'helmettime': helmetElaspedTime, 'beltcount' :attendees });
               }
-
-              logger.warning('timeToWorkStart : ${timeToWorkStart}');
-              logger.warning('lastworkDay : ${lastWokDay}, helmettime: ${helmetElaspedTime}');
 
               _stopWatchTimer= StopWatchTimer( presetMillisecond: helmetElaspedTime
                 //mode: StopWatchMode.countUp,
@@ -1930,19 +2124,28 @@ class ApplicationState extends ChangeNotifier {
 
               logger.warning('workzone: ${workZone}, role: ${role}, uid: ${user.uid}, ' );
 
-              _timer_geo = Timer.periodic(const Duration(seconds: 30), (timer) {
+              _timer_geo = Timer.periodic(const Duration(seconds: 60), (timer) async {
+                logger.warning('_timer_geo. Timer period');
+
+                if(_stopWatchTimer.isRunning) {
+                  helmetElaspedTime = await _stopWatchTimer.rawTime.first;
+                }
+                setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime,lastWokDay);
+
+                /*
                 Geolocator.getCurrentPosition().then((value) async  {
+                  logger.warning('getCurrentPosition. geolocation');
                   geolatitude=value.latitude;
                   geolongitude=value.longitude;
-                  logger.warning('tmrState. geolocation. beltstate, worktime');
-
                   if(_stopWatchTimer.isRunning) {
                     helmetElaspedTime = await _stopWatchTimer.rawTime.first;
                   }
-                  setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime);
+                  setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime,lastWokDay);
                 });
+                */
               });
 
+              notifyListeners();
               if(role=='manager') {
                 //if(logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') {
 /*
@@ -1964,6 +2167,7 @@ class ApplicationState extends ChangeNotifier {
                 listenWorker = FirebaseFirestore.instance
                     .collection('user')
                     .where('workzone', isEqualTo: workZone)
+                    .orderBy('lastworkday', descending: true)
                     .snapshots()
                     .listen((snapshot) {
                   _workerLogMessages = [];
@@ -2429,6 +2633,7 @@ class ApplicationState extends ChangeNotifier {
         displayName = '사용자 정보 없음';
         displayEmail = '사용자 정보 없음';
         logger.warning('logout ');
+        role = 'worker';
         bTdevice?.disconnect();
         logState = false;
         _loginState = ApplicationLoginState.loggedOut;
@@ -2944,7 +3149,7 @@ class _HomePersonalInfoState extends State<HomePersonalInfo> {
                       child: Text(
                         item['name']!,
                         style: TextStyle(
-                          fontSize: ScreenUtil().setSp(14.4),
+                          fontSize: ScreenUtil().setSp(13.9),
                           color: Colors.white,
                           //fontWeight: FontWeight.w500,
                         ),
@@ -4475,12 +4680,25 @@ class _HomePageState extends State<HomePage> {
     player = AudioPlayer();
     //ble instance 생성
     flutterBlue = FlutterBlue.instance;
+    BackgroundLocation.setAndroidNotification(
+      title: "Notification title",
+      message: "Notification message",
+      icon: "@mipmap/ic_launcher",
+    );
+    BackgroundLocation.setAndroidConfiguration(10000);
+    BackgroundLocation.startLocationService();
+    BackgroundLocation.getLocationUpdates((location) {
+      //logger.warning('BackgroundLocation. geolocation');
+      geolatitude=location.latitude!;
+      geolongitude=location.longitude!;
+    });
+/*
     Geolocator.getCurrentPosition().then((value) =>
     {
       geolatitude = value.latitude,
       geolongitude = value.longitude,
       logger.warning('geolocation(init) $geolatitude, $geolongitude'),
-    });
+    });*/
 /*
 
   StreamController<int>? _eventsBattery;
