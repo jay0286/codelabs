@@ -6,6 +6,7 @@ import 'dart:math';
 //import 'dart:io';
 import 'dart:ui';
 
+import 'package:background_location/background_location.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';  // new
 import 'package:firebase_auth/firebase_auth.dart'; // new
@@ -16,27 +17,24 @@ import 'package:flutter/material.dart';
 //DeviceOrientation 관련 서비스
 import 'package:flutter/services.dart';
 import 'package:flutter_blue/flutter_blue.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
-
 import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:latlng/latlng.dart';
 import 'package:map/map.dart';
 import 'package:provider/provider.dart';           // new
 import 'package:simple_logger/simple_logger.dart';
+import 'package:stop_watch_timer/stop_watch_timer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '/constant/constant.dart';
 import '/pages/splashScreen.dart';
 import 'src/authentication.dart';                  // new
 import 'src/widgets.dart';
 import 'widgets.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:stop_watch_timer/stop_watch_timer.dart';
-import 'package:background_location/background_location.dart';
 
 final logger = SimpleLogger();
 
@@ -818,12 +816,12 @@ void _setLoopMode(LoopMode mode) {
 }
 
 
-void setMyLocation(String uid, GeoPoint location, bool beltState, int helmetElaspedTime, DateTime? lastWokDay ) {
+void setMyLocation(String uid, GeoPoint location, bool beltState, int helmetElaspedTime, DateTime? lastWokDay, int attendees ) {
   logger.warning('setMyLocation: ${beltState},${helmetElaspedTime} ');
   final userDoc =  FirebaseFirestore.instance
       .collection('user')
       .doc(uid);
-  userDoc.update({'geopoint': location, 'belt': beltState, 'helmettime': helmetElaspedTime, 'lastworkday': timeToWorkStart!.millisecondsSinceEpoch, });
+  userDoc.update({'geopoint': location, 'belt': beltState, 'helmettime': helmetElaspedTime, 'lastworkday': timeToWorkStart!.millisecondsSinceEpoch, 'beltcount': attendees});
   //beltState
 }
 
@@ -2091,20 +2089,19 @@ class ApplicationState extends ChangeNotifier {
               helmetElaspedTime = (value.docs[0].data()['helmettime']==null)?0: value.docs[0].data()['helmettime'];
               workZone = (value.docs[0].data()['workzone']==null)?'테스트 작업지구':value.docs[0].data()['workzone'];
               role = (value.docs[0].data()['role']==null)?'worker':value.docs[0].data()['role'];
-
+              //lastWokDay =DateTime.fromMillisecondsSinceEpoch(0);
               logger.warning('name: ${displayName}');
               logger.warning('phone: ${user.phoneNumber}');
               logger.warning('read attendees : ${attendees}');
               logger.warning('timeToWorkStart2 : ${timeToWorkStart}');
-
-
               logger.warning('lastworkDay2 : ${lastWokDay}, lastworkDay: ${(value.docs[0].data()['lastworkday']==null)?0:value.docs[0].data()['lastworkday']}');
-
+              logger.warning('workzone: ${workZone}, role: ${role}, uid: ${user.uid}, ' );
+              logger.warning('helmetElaspedTime: ${helmetElaspedTime}');
               listenWhoAmI?.cancel();
-
 
               if(timeToWorkStart!=lastWokDay)
               {
+                //_stopWatchTimer.onExecute.add(StopWatchExecute.reset);
                 logger.warning('today is not today');
                 lastWokDay = timeToWorkStart;
                 attendees=0;
@@ -2122,15 +2119,29 @@ class ApplicationState extends ChangeNotifier {
                 //onChangeRawMinute: (value) => print(' onChangeRawMinute $value'),
               );
 
-              logger.warning('workzone: ${workZone}, role: ${role}, uid: ${user.uid}, ' );
 
               _timer_geo = Timer.periodic(const Duration(seconds: 60), (timer) async {
                 logger.warning('_timer_geo. Timer period');
 
                 if(_stopWatchTimer.isRunning) {
                   helmetElaspedTime = await _stopWatchTimer.rawTime.first;
+                  logger.warning('stopwatch timer(helmetElaspedTime) : ${helmetElaspedTime}');
                 }
-                setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime,lastWokDay);
+
+                timeToWorkStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+
+                if(timeToWorkStart!=lastWokDay)
+                {
+                  _stopWatchTimer.onExecute.add(StopWatchExecute.reset);
+                  _stopWatchTimer.setPresetTime(mSec:0);
+                  _stopWatchTimer.onExecute.add(StopWatchExecute.start);
+                  logger.warning('today is not today on the playing');
+                  lastWokDay = timeToWorkStart;
+                  attendees = 0;
+                  helmetElaspedTime = 0;
+                }
+                setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime,lastWokDay, attendees);
+
 
                 /*
                 Geolocator.getCurrentPosition().then((value) async  {
@@ -5206,11 +5217,18 @@ class _HomePageState extends State<HomePage> {
               switch (snapshot.data) {
 
                 case BluetoothDeviceState.connected:
-                 /* _onPressed = () async {isDissconnectbyMenu=true; await bTdevice?.disconnect();};
+                  /*_onPressed = () async {isDissconnectbyMenu=true; await bTdevice?.disconnect();};
                   //beltState = false;
                   logger.warning('beltStateScaffold:'+beltState.toString());
                   text = ' 연결끊기';*/
                   text = ' 연결됨';
+                  _onPressed = () async {
+                    logger.warning('reset stopwatch');
+                    //_stopWatchTimer.onExecute.add(StopWatchExecute.stop);
+                    _stopWatchTimer.onExecute.add(StopWatchExecute.reset);
+                    _stopWatchTimer.setPresetTime(mSec:0);
+                    _stopWatchTimer.onExecute.add(StopWatchExecute.start);
+                  };
                   break;
                 case BluetoothDeviceState.disconnected:
                    _onPressed = () =>//launch('tel://+821040590286'); // newAlertD(context, displayName!, '응급상황');
