@@ -802,6 +802,8 @@ void _stopSound() {
     player.stop();
   }
   playerstate =0;
+
+  player.setVolume(0.8);
 }
 void _setAsset(String str) {
   // ignore: avoid_print
@@ -2436,10 +2438,10 @@ class ApplicationState extends ChangeNotifier {
                       );
                       if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
                           DateTime.now())) {
-                        _stopSound();
-                        _setAsset('assets/audio/alram1.mp3');
-                        _setLoopMode(LoopMode.one);
-                        _playSound();
+                        //_stopSound();
+                        //_setAsset('assets/audio/alram1.mp3');
+                        //_setLoopMode(LoopMode.one);
+                        //_playSound();
                         addNPopupManager(
                             thisTime.name, formattedDate + formattedTime,
                             '연결해제', location ,300);
@@ -2452,10 +2454,10 @@ class ApplicationState extends ChangeNotifier {
                       );
                       if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
                           DateTime.now())) {
-                        _stopSound();
-                        _setAsset('assets/audio/alram1.mp3');
-                        _setLoopMode(LoopMode.one);
-                        _playSound();
+                        //_stopSound();
+                        //_setAsset('assets/audio/alram1.mp3');
+                        //_setLoopMode(LoopMode.one);
+                        //_playSound();
                         addNPopupManager(
                             thisTime.name, formattedDate + formattedTime,
                             '연결복귀',location ,300);
@@ -4931,13 +4933,10 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  Text(
-                    (State == '연결해제') ?
-                    // ignore: unnecessary_string_escapes
-                    "알람 소리를 해제하려면 \'해제\'버튼을 눌러주세요"
-                        : (State == '상황해제') ?
-                    "응급상황이 해제 되었습니다" :
-                    "장치연결이 해제 되었습니다",
+                  Text( (State == '연결끊기' ) ? "안전모가 성공적으로 해제되었습니다."
+                      :(State == '연결해제' ) ? "안전모 연결이 해제 되었습니다."
+                      : (State == '상황해제') ? "응급상황이 해제 되었습니다"
+                      : "장치연결이 해제 되었습니다",
                     //Text("상황을 해제하려면 \'해제\'버튼을 눌러주세요\n \'해제\'하지 않으면 자동 승인됩니다",
                     style: const TextStyle(
                       color: Colors.black54,
@@ -4969,7 +4968,7 @@ class _HomePageState extends State<HomePage> {
                   // height: 50,
                   child:Padding(
                     padding: const EdgeInsets.only(left: 20,right: 20),
-                    child: (State!='연결해제')?ElevatedButton(
+                    child: (State!='연결해제'&&State!='연결끊기')?ElevatedButton(
                       child: const Text('확인'),
                       style: ElevatedButton.styleFrom(
                           primary: Colors.deepPurple,
@@ -5007,12 +5006,25 @@ class _HomePageState extends State<HomePage> {
             else {
               logger.warning('alertA TimeExpire:'+State);
               if(State!='상황해제') {
+                if(State=='연결끊기'){
+                  State ='연결해제';
+                }
                 addStateToGuestBook(State);
               }
               _counterA=0;
               _timer?.cancel();
               _stopSound();
               isDialogAlive =false;
+
+              if(State=='연결해제') {
+                _stopSound();
+
+                player.setVolume(1);
+                _setAsset('assets/audio/disconn.mp3');
+                _setLoopMode(LoopMode.off);
+                _playSound();//player.play();
+               // addStateToGuestBook(State);
+              }
 
               Navigator.of(context, rootNavigator: true).pop(false);
               //Navigator.of(builderContext).pop(true);
@@ -5217,18 +5229,18 @@ class _HomePageState extends State<HomePage> {
               switch (snapshot.data) {
 
                 case BluetoothDeviceState.connected:
-                  /*_onPressed = () async {isDissconnectbyMenu=true; await bTdevice?.disconnect();};
+                  _onPressed = () async {isDissconnectbyMenu=true; await bTdevice?.disconnect();};
                   //beltState = false;
                   logger.warning('beltStateScaffold:'+beltState.toString());
-                  text = ' 연결끊기';*/
-                  text = ' 연결됨';
-                  _onPressed = () async {
+                  text = ' 연결끊기';
+                  //text = ' 연결됨';
+                  /*_onPressed = () async {
                     logger.warning('reset stopwatch');
                     //_stopWatchTimer.onExecute.add(StopWatchExecute.stop);
                     _stopWatchTimer.onExecute.add(StopWatchExecute.reset);
                     _stopWatchTimer.setPresetTime(mSec:0);
                     _stopWatchTimer.onExecute.add(StopWatchExecute.start);
-                  };
+                  };*/
                   break;
                 case BluetoothDeviceState.disconnected:
                    _onPressed = () =>//launch('tel://+821040590286'); // newAlertD(context, displayName!, '응급상황');
@@ -5257,14 +5269,20 @@ class _HomePageState extends State<HomePage> {
                     isConnected=false;
                     if(!beltState) {
                       beltState=false;
-                    } else
-                      {
-                      _stopSound();
-                      _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.one);
-                      _playSound();//player.play();
+                    } else {
+                      if(isDissconnectbyMenu==true) {
+                        _stopSound();
+                        addNewPopupU("연결끊기"/*유저의 의도적 (메뉴)연결해제*/, 3);
+                      }
+                      else {
+                        _stopSound();
+                        _setAsset('assets/audio/alram1.mp3');
+                        _setLoopMode(LoopMode.one);
+                        _playSound(); //player.play();
+                        addNewPopupU("연결해제", 15);
+                      }
                       isHelmetDisconnected=true;
-                      addNewPopupU("연결해제", 15);
+                      isDissconnectbyMenu=false;
                     }
                     _timer_bat?.cancel();
                     _timer_beltinit?.cancel();
