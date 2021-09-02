@@ -817,6 +817,15 @@ void _setLoopMode(LoopMode mode) {
   player.setLoopMode(mode);
 }
 
+void setMyHelmetBtState(String uid, bool HelmetBtState ) {
+  logger.warning('HelmetBtState: ${HelmetBtState}');
+  final userDoc =  FirebaseFirestore.instance
+      .collection('user')
+      .doc(uid);
+  userDoc.update({'HelmetBtState': HelmetBtState});
+}
+
+
 
 void setMyLocation(String uid, GeoPoint location, bool beltState, int helmetElaspedTime, DateTime? lastWokDay, int attendees ) {
   logger.warning('setMyLocation: ${beltState},${helmetElaspedTime} ');
@@ -1134,23 +1143,23 @@ class _WorkerListState extends State<WorkerList> {
                               const SizedBox(width: 1.5),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(3.0), //or 15.0
-                                child:(item.belt==true) ? Container(
+                                child:(item.helmetBtState==false) ? Container(
                                   height: ScreenUtil().setHeight(20),
                                   width: ScreenUtil().setWidth(45),
-                                  color: Colors.deepPurple,
+                                  color: Colors.amber.shade500,//.withOpacity(0.85),
                                   alignment: Alignment.center,
-                                  child: Text('착용중',
+                                  child: Text('연결해제',
                                       style:  TextStyle(
-                                        color: Colors.white,
-                                        fontSize:  ScreenUtil().setSp(14),
+                                        color: Colors.black87,
+                                        fontSize:  ScreenUtil().setSp(12.5),
                                       )
                                   ),
                                 ) :  Container(
                                   height: ScreenUtil().setHeight(20),
                                   width: ScreenUtil().setWidth(45),
-                                  color: Colors.red.withOpacity(0.85),
+                                  color: (item.belt==true) ? Colors.deepPurple:Colors.red.withOpacity(0.85) ,
                                   alignment: Alignment.center,
-                                  child: Text('미착용',
+                                  child: Text((item.belt==true) ? '착용중':'미착용',
                                       style:  TextStyle(
                                         color: Colors.white,
                                         fontSize: ScreenUtil().setSp(14),
@@ -1293,10 +1302,10 @@ class _WorkerListState extends State<WorkerList> {
                                   width: ScreenUtil().setWidth(45),
                                   color: Colors.grey,
                                   alignment: Alignment.center,
-                                  child: Text('미착용',
+                                  child: Text('연결해제',
                                       style:  TextStyle(
                                         color: Colors.white,
-                                        fontSize: ScreenUtil().setSp(14),
+                                        fontSize:  ScreenUtil().setSp(12.5),
                                       )
                                   ),
                                 ),
@@ -1452,6 +1461,7 @@ class _WorkerListState extends State<WorkerList> {
 */
 class WorkerListMessage {
   WorkerListMessage({
+    required this.helmetBtState,
     required this.name,
     required this.uid,
     required this.workzone,
@@ -1463,6 +1473,7 @@ class WorkerListMessage {
     required this.accident,
     required this.lastworkday,
   });
+  final bool helmetBtState;
   final String name;
   final String uid;
   final String phone;
@@ -2136,7 +2147,9 @@ class ApplicationState extends ChangeNotifier {
                 {
                   _stopWatchTimer.onExecute.add(StopWatchExecute.reset);
                   _stopWatchTimer.setPresetTime(mSec:0);
-                  _stopWatchTimer.onExecute.add(StopWatchExecute.start);
+                  if(isHelmetDisconnected==false) {
+                    _stopWatchTimer.onExecute.add(StopWatchExecute.start);
+                  }
                   logger.warning('today is not today on the playing');
                   lastWokDay = timeToWorkStart;
                   attendees = 0;
@@ -2189,6 +2202,7 @@ class ApplicationState extends ChangeNotifier {
                   snapshot.docs.forEach((document) {
                     _workerLogMessages.add(
                       WorkerListMessage(
+                        helmetBtState:(document.data()['HelmetBtState']==null)?false:document.data()['HelmetBtState'] ,
                         name:(document.data()['name']==null)?'무명':document.data()['name'] ,
                         uid: document.data()['uid'],
                         phone:(document.data()['phone']==null)?'01012345678':document.data()['phone'] ,
@@ -2436,6 +2450,7 @@ class ApplicationState extends ChangeNotifier {
                         0,
                         thisTime,
                       );
+                      /*
                       if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
                           DateTime.now())) {
                         //_stopSound();
@@ -2445,13 +2460,14 @@ class ApplicationState extends ChangeNotifier {
                         addNPopupManager(
                             thisTime.name, formattedDate + formattedTime,
                             '연결해제', location ,300);
-                      }
+                      }*/
                       _attendeesoffline++;
                     } else if (message == '연결복귀') {
                       _rcnLogMessages.insert(
                         0,
                         thisTime,
                       );
+                      /*
                       if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
                           DateTime.now())) {
                         //_stopSound();
@@ -2461,7 +2477,7 @@ class ApplicationState extends ChangeNotifier {
                         addNPopupManager(
                             thisTime.name, formattedDate + formattedTime,
                             '연결복귀',location ,300);
-                      }
+                      }*/
                       _attendeesRecorvline++;
                     } else if (message == '턱끈연결') {
                       _beltLogMessages.insert(
@@ -5017,6 +5033,8 @@ class _HomePageState extends State<HomePage> {
               isDialogAlive =false;
 
               if(State=='연결해제') {
+
+                setMyHelmetBtState(iuserId, false);
                 _stopSound();
 
                 player.setVolume(1);
@@ -5276,11 +5294,12 @@ class _HomePageState extends State<HomePage> {
                       }
                       else {
                         _stopSound();
-                        _setAsset('assets/audio/alram1.mp3');
+                        _setAsset('assets/audio/alram beeps.mp3');
                         _setLoopMode(LoopMode.one);
                         _playSound(); //player.play();
                         addNewPopupU("연결해제", 15);
                       }
+                      //setMyHelmetBtState(iuserId, false);
                       isHelmetDisconnected=true;
                       isDissconnectbyMenu=false;
                     }
@@ -5303,6 +5322,8 @@ class _HomePageState extends State<HomePage> {
                       }
                       isDissconnectbyMenu=false;
                     }
+
+                  setMyHelmetBtState(iuserId, true);
                   isHelmetDisconnected=false;
                   isConnected = true;
                   await connectMyProtocol( bTdevice);
