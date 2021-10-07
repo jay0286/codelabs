@@ -372,22 +372,30 @@ class _RegisterFormState extends State<RegisterForm> {
                           color: Colors.deepPurpleAccent,
                         ),
                         value: _valueworkzone,
-                        items: [
-                          const DropdownMenuItem(
+                        items: const [
+                          DropdownMenuItem(
                             child: Text("부산 A지구"),
                             value: 1,
                           ),
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             child: Text("부산 B지구"),
                             value: 2,
                           ),
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             child: Text("서울 가산지구"),
                             value: 3,
                           ),
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             child: Text("수원 고등지구"),
                             value: 4,
+                          ),
+                          DropdownMenuItem(
+                            child: Text("서울 사학연금"),
+                            value: 5,
+                          ),
+                          DropdownMenuItem(
+                            child: Text("대전 메가허브"),
+                            value: 6,
                           )
                         ],
                         onChanged: ( int? value) {
@@ -396,14 +404,14 @@ class _RegisterFormState extends State<RegisterForm> {
                             _valueworkzone = value!;
                           });
                         },
-                        hint:Text("Select item")
+                        hint:const Text("Select item")
                     ),
                   ],
                 ),
                 Row(
                   children: [
                     const Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.symmetric(horizontal: 24),
                       child: Text('관리/작업 직무 :',
                         style:TextStyle(
                           //fontSize: 18,
@@ -424,12 +432,12 @@ class _RegisterFormState extends State<RegisterForm> {
                           color: Colors.deepPurpleAccent,
                         ),
                         value: _valuerole,
-                        items: [
-                          const DropdownMenuItem(
+                        items: const [
+                          DropdownMenuItem(
                             child: Text("작업자"),
                             value: 1,
                           ),
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             child: Text("관리자"),
                             value: 2,
                           )
@@ -440,7 +448,7 @@ class _RegisterFormState extends State<RegisterForm> {
                             _valuerole = value!;
                           });
                         },
-                        hint:Text("Select item")
+                        hint:const Text("Select item")
                     ),
                   ],
                 ),
@@ -463,7 +471,7 @@ class _RegisterFormState extends State<RegisterForm> {
                                _phoneNumberController.text,
                                _passwordController.text,
                                (_valuerole==1)?'worker':'manager',
-                               (_valueworkzone==1)?'부산 A지구':(_valueworkzone==2)?'부산 B지구':(_valueworkzone==3)?'서울 가산지구':'수원 고등지구',
+                               (_valueworkzone==1)?'부산 A지구':(_valueworkzone==2)?'부산 B지구':(_valueworkzone==3)?'서울 가산지구':(_valueworkzone==4)?'수원 고등지구':(_valueworkzone==5)?'서울 사학연금':'대전 메가허브',
                             );
                           }
                         },
