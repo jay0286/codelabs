@@ -792,7 +792,6 @@ void _playSound() {
 
   player.play();
   playerstate =1;
-
 }
 
 void _stopSound() {
@@ -802,7 +801,6 @@ void _stopSound() {
     player.stop();
   }
   playerstate =0;
-
   player.setVolume(0.8);
 }
 void _setAsset(String str) {
@@ -839,13 +837,13 @@ void setMyLocation(String uid, GeoPoint location, bool beltState, int helmetElas
 int helmetElaspedTime=0;
 
 
-Future<void> setMyBeltState(String uid, bool beltstate, int beltCount) async {
+Future<void> setMyBeltState(String uid, int beltstate, int beltCount) async {
 
   final userDoc =  FirebaseFirestore.instance
       .collection('user')
       .doc(uid);
-  if(beltstate==true) {
-    userDoc.update({'belt': beltstate, 'beltcount': beltCount});
+  if(beltstate==3) {
+    userDoc.update({'beltState': beltstate, 'beltcount': beltCount});
     if(_stopWatchTimer.isRunning!=true) {
 
       logger.warning('setMyBeltState T : ${helmetElaspedTime}');
@@ -854,7 +852,7 @@ Future<void> setMyBeltState(String uid, bool beltstate, int beltCount) async {
     }
   }
   else  {
-    userDoc.update({'belt': beltstate});
+    userDoc.update({'beltState': beltstate});
     if(_stopWatchTimer.isRunning) {
       helmetElaspedTime = await _stopWatchTimer.rawTime.first;
       logger.warning('setMyBeltState  F : ${helmetElaspedTime}');
@@ -1143,7 +1141,7 @@ class _WorkerListState extends State<WorkerList> {
                               const SizedBox(width: 1.5),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(3.0), //or 15.0
-                                child:(item.helmetBtState==false) ? Container(
+                                child:/*(item.belt==1) ? Container(
                                   height: ScreenUtil().setHeight(20),
                                   width: ScreenUtil().setWidth(45),
                                   color: Colors.amber.shade500,//.withOpacity(0.85),
@@ -1154,15 +1152,15 @@ class _WorkerListState extends State<WorkerList> {
                                         fontSize:  ScreenUtil().setSp(12.5),
                                       )
                                   ),
-                                ) :  Container(
+                                ) : */ Container(
                                   height: ScreenUtil().setHeight(20),
                                   width: ScreenUtil().setWidth(45),
-                                  color: (item.belt==true) ? Colors.deepPurple:Colors.red.withOpacity(0.85) ,
+                                  color:(item.belt==1)?Colors.red.withOpacity(0.85)  : (item.belt==2) ?Colors.amber.shade500 :  Colors.deepPurple,
                                   alignment: Alignment.center,
-                                  child: Text((item.belt==true) ? '착용중':'미착용',
+                                  child: Text((item.belt==1)?'미착용':(item.belt==2)?'연결해제':'착용중',
                                       style:  TextStyle(
-                                        color: Colors.white,
-                                        fontSize: ScreenUtil().setSp(14),
+                                        color: (item.belt==2)?Colors.black87:Colors.white,
+                                        fontSize: (item.belt==2)?ScreenUtil().setSp(12.5):ScreenUtil().setSp(13),
                                       )
                                   ),
                                 ),
@@ -1302,7 +1300,7 @@ class _WorkerListState extends State<WorkerList> {
                                   width: ScreenUtil().setWidth(45),
                                   color: Colors.grey,
                                   alignment: Alignment.center,
-                                  child: Text('연결해제',
+                                  child: Text('미착용',
                                       style:  TextStyle(
                                         color: Colors.white,
                                         fontSize:  ScreenUtil().setSp(12.5),
@@ -1479,7 +1477,7 @@ class WorkerListMessage {
   final String phone;
   final String workzone;
   final String role;
-  final bool belt;
+  final int belt;
   final int? worktime;
   final GeoPoint? location;
   final int accident;
@@ -2022,6 +2020,13 @@ class ApplicationState extends ChangeNotifier {
           _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
             if(_counterA > 0) {
               _counterA--;
+              logger.warning('popup1 timer:${_counterA}');
+              if(_counterA==5){
+                logger.warning('expired');
+                _setAsset('assets/audio/alram beeps.mp3');
+                _setLoopMode(LoopMode.one);
+                _playSound();
+              }
             }
             else {
               addStateToGuestBook(State);
@@ -2078,7 +2083,6 @@ class ApplicationState extends ChangeNotifier {
 
       logger.warning('FireStore[FirebaseAuth] -------- userChanges()');
       if (user != null) {
-
         timeToWorkStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
        // displayPhoneNumber = user.phoneNumber;
         displayEmail = user.email!;
@@ -2170,6 +2174,7 @@ class ApplicationState extends ChangeNotifier {
                 });
                 */
               });
+              setMyBeltState(iuserId,1, 0); //로그인 될때, 최종 턱끈 상태가 반영되므로 턱끈BT 변화가 있기전엔 미장착으로
 
               notifyListeners();
               if(role=='manager') {
@@ -2200,6 +2205,7 @@ class ApplicationState extends ChangeNotifier {
                   _attendeesworker = snapshot.docs.length;
                   logger.warning('FireStore[read] -------- worker list:' + _attendeesworker.toString());
                   snapshot.docs.forEach((document) {
+                    DateTime getLastWorkDayDateTime = DateTime.fromMillisecondsSinceEpoch((document.data()['lastworkday']==null)?0:document.data()['lastworkday']);
                     _workerLogMessages.add(
                       WorkerListMessage(
                         helmetBtState:(document.data()['HelmetBtState']==null)?false:document.data()['HelmetBtState'] ,
@@ -2208,16 +2214,18 @@ class ApplicationState extends ChangeNotifier {
                         phone:(document.data()['phone']==null)?'01012345678':document.data()['phone'] ,
                         workzone: (document.data()['workzone']==null)?'none':document.data()['workzone'],
                         role: (document.data()['role']==null)?'none':document.data()['role'],
-                        belt: (document.data()['belt']==null)?false:document.data()['belt'],
+                        belt: (document.data()['beltState']==null|| lastWokDay != getLastWorkDayDateTime?4:document.data()['beltState']),
                         worktime: (document.data()['helmettime']==null)?0:document.data()['helmettime'],
                         location: document.data()['geopoint'],
                         accident: (document.data()['beltcount']==null)?0:document.data()['beltcount'],
-                        lastworkday: DateTime.fromMillisecondsSinceEpoch((document.data()['lastworkday']==null)?0:document.data()['lastworkday']),
+                        lastworkday:getLastWorkDayDateTime ,
                       ),
                     );
                     logger.warning('name:${document.data()['name']}');
 
                   });
+                  _workerLogMessages.sort((a,b) => a.belt.compareTo(b.belt));
+                  //_workerLogMessages.sort((a,b) => a.lastworkday.compareTo(b.lastworkday));
                   notifyListeners();
                 });
 
@@ -4823,7 +4831,7 @@ class _HomePageState extends State<HomePage> {
                       _setLoopMode(LoopMode.off);
 
                       logger.warning('beltstate T: ${iuserId}, ${attendees}');
-                      setMyBeltState(iuserId,true, ++attendees);
+                      setMyBeltState(iuserId,3, ++attendees);
                      // setAccidentIncrease(iuserId, attendees); //jay set my bel state 함수 안으로 이동
                     }
                     else if(btMessage.contains('Belt Disconnected')) {
@@ -4833,12 +4841,12 @@ class _HomePageState extends State<HomePage> {
                       _setLoopMode(LoopMode.off);
 
                       logger.warning('beltstate F: ${iuserId}, ${attendees}');
-                      setMyBeltState(iuserId, false , 0);
+                      setMyBeltState(iuserId, 1 , 0);
                     }
                     else if(btMessage.contains('EM')) {
                       state = '위급상황';
                       _setAsset('assets/audio/alram1.mp3');
-                      _setLoopMode(LoopMode.off);
+                      _setLoopMode(LoopMode.one);
                     }
                     else if(btMessage.contains('IA')) {
                       state = '무활동반응';
@@ -4993,7 +5001,6 @@ class _HomePageState extends State<HomePage> {
                               fontSize: 18,
                               fontWeight: FontWeight.bold)),
                       onPressed:() {
-                        _stopSound();
                         _counterA=0;
                         _timer?.cancel();
                         isDialogAlive =false;
@@ -5018,12 +5025,22 @@ class _HomePageState extends State<HomePage> {
           _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
             if(_counterA > 0) {
               _counterA--;
+              logger.warning('popup timer2:${_counterA}');
+              if(_counterA==5){
+                logger.warning('expired');
+                _setAsset('assets/audio/alram beeps.mp3');
+                _setLoopMode(LoopMode.one);
+                _playSound();
+              }
             }
             else {
               logger.warning('alertA TimeExpire:'+State);
               if(State!='상황해제') {
-                if(State=='연결끊기'){
+                if(State=='연결해제'){
+                  setMyBeltState(iuserId,2,0);
+                } else  if(State=='연결끊기'){
                   State ='연결해제';
+                  setMyBeltState(iuserId,1,0);
                 }
                 addStateToGuestBook(State);
               }
@@ -5033,8 +5050,7 @@ class _HomePageState extends State<HomePage> {
               isDialogAlive =false;
 
               if(State=='연결해제') {
-
-                setMyHelmetBtState(iuserId, false);
+                //setMyHelmetBtState(iuserId, false);
                 _stopSound();
 
                 player.setVolume(1);
@@ -5159,6 +5175,11 @@ class _HomePageState extends State<HomePage> {
                       _stopSound();
                       Navigator.of(context, rootNavigator: true).pop(false);//true로 앞에 있으면 닫아지고 뒤에 있으면 닫아지지 않음
                       if(State=='위급상황') {
+                        logger.warning('위급상황 해제');
+                        _stopSound();
+                        _setLoopMode(LoopMode.off);
+                        _setAsset('assets/audio/relEvent.mp3');
+                        _playSound();
                         addStateToGuestBook('상황해제');
                         addNewPopupU('상황해제', 60);
                       }
@@ -5201,6 +5222,13 @@ class _HomePageState extends State<HomePage> {
           _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
             if(_counter > 0) {
               _counter--;
+              logger.warning('popup3 timer:${_counterA}');
+              if(_counterA==5){
+                logger.warning('expired');
+                _setAsset('assets/audio/alram beeps.mp3');
+                _setLoopMode(LoopMode.one);
+                _playSound();
+              }
             }
             else {
               logger.warning('alertD TimeExpire:'+State);
@@ -5294,10 +5322,13 @@ class _HomePageState extends State<HomePage> {
                       }
                       else {
                         _stopSound();
+                        /*
                         _setAsset('assets/audio/alram beeps.mp3');
                         _setLoopMode(LoopMode.one);
-                        _playSound(); //player.play();
+                        _playSound();
+                         */
                         addNewPopupU("연결해제", 15);
+                        //setMyBeltState(iuserId,2, 0);
                       }
                       //setMyHelmetBtState(iuserId, false);
                       isHelmetDisconnected=true;
@@ -5313,6 +5344,7 @@ class _HomePageState extends State<HomePage> {
                       _stopSound();
                       if(_counterA==0) {
                         addStateToGuestBook('연결복귀');
+                        setMyBeltState(iuserId,3, attendees); //전원이랑 턱끈이랑 연결되엉있어 BT가 연결되면 턲끈이 있다 봐도 무방함
                       }
                       //_counterA=0;
                       _timer?.cancel();
@@ -5323,7 +5355,7 @@ class _HomePageState extends State<HomePage> {
                       isDissconnectbyMenu=false;
                     }
 
-                  setMyHelmetBtState(iuserId, true);
+                 // setMyHelmetBtState(iuserId, true);
                   isHelmetDisconnected=false;
                   isConnected = true;
                   await connectMyProtocol( bTdevice);
