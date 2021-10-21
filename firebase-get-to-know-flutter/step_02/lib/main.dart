@@ -35,6 +35,7 @@ import '/pages/splashScreen.dart';
 import 'src/authentication.dart';                  // new
 import 'src/widgets.dart';
 import 'widgets.dart';
+import 'package:workmanager/workmanager.dart';
 
 final logger = SimpleLogger();
 
@@ -826,11 +827,11 @@ void setMyHelmetBtState(String uid, bool HelmetBtState ) {
 
 
 void setMyLocation(String uid, GeoPoint location, bool beltState, int helmetElaspedTime, DateTime? lastWokDay, int attendees ) {
-  logger.warning('setMyLocation: ${beltState},${helmetElaspedTime} ');
+  logger.warning('setMyLocation:${location}, beltstate: ${beltState} (${helmetElaspedTime})');
   final userDoc =  FirebaseFirestore.instance
       .collection('user')
       .doc(uid);
-  userDoc.update({'geopoint': location, 'belt': beltState, 'helmettime': helmetElaspedTime, 'lastworkday': timeToWorkStart!.millisecondsSinceEpoch, 'beltcount': attendees});
+  userDoc.update({'geopoint': location, 'belt': beltState, 'helmettime': helmetElaspedTime, 'lastworkday': /*timeToWorkStart 1020 jay */ lastWokDay!.millisecondsSinceEpoch, 'beltcount': attendees});
   //beltState
 }
 
@@ -839,30 +840,52 @@ int helmetElaspedTime=0;
 
 Future<void> setMyBeltState(String uid, int beltstate, int beltCount) async {
 
+  logger.warning('setMyBeltState :${beltstate}, ( ${helmetElaspedTime})');
   final userDoc =  FirebaseFirestore.instance
       .collection('user')
       .doc(uid);
   if(beltstate==3) {
     userDoc.update({'beltState': beltstate, 'beltcount': beltCount});
     if(_stopWatchTimer.isRunning!=true) {
-
-      logger.warning('setMyBeltState T : ${helmetElaspedTime}');
+      int debugprint = await _stopWatchTimer.rawTime.first;
+      logger.warning('_stopWatchTimer start ('+debugprint.toString()+')');
       _stopWatchTimer.onExecute.add(StopWatchExecute.start);
       //_stopWatchTimer.secondTime.listen((value) => print('secondTime $value'));
     }
   }
   else  {
     userDoc.update({'beltState': beltstate});
-    if(_stopWatchTimer.isRunning) {
+    if(_stopWatchTimer.isRunning==true) {
       helmetElaspedTime = await _stopWatchTimer.rawTime.first;
-      logger.warning('setMyBeltState  F : ${helmetElaspedTime}');
+      logger.warning('_stopWatchTimer stop (${helmetElaspedTime})');
       _stopWatchTimer.onExecute.add(StopWatchExecute.stop);
     }
   }
+  addlogToGuestBook('beltlog');
 }
 
 
 
+
+Future<DocumentReference> addlogToGuestBook(String message) {
+  message = message;
+
+  //beltState, helmetElaspedTime,lastWokDay, attendees
+
+  // ignore: avoid_print
+  logger.warning('addStateToGuestBook $geolatitude, $geolongitude');
+  return FirebaseFirestore.instance.collection('guestlogbook2').add({
+    'text': message,
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+    'name': FirebaseAuth.instance.currentUser!.displayName,
+    'userId': FirebaseAuth.instance.currentUser!.uid,
+    'beltState': beltState,
+    'helmetElaspedTime': helmetElaspedTime,
+    'workzone' : workZone,
+    'logDate': DateTime.now(),
+    'beltCount' : attendees,
+  });
+}
 
 
 
@@ -897,7 +920,34 @@ Future<DocumentReference> addStateToGuestBook(String message) {
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
+//jay for dart/flutter engine running on background
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) {
+    print("Native called background task"); //simpleTask will be emitted here.
+    return Future.value(true);
+  });
+}
+
 void main() {
+
+  //jay for dart/flutter engine running on background
+  Workmanager().initialize(
+      callbackDispatcher, // The top level function, aka callbackDispatcher
+      isInDebugMode: true // If enabled it will post a notification whenever the task is running. Handy for debugging tasks
+  );
+
+  //jay for dart/flutter engine running on background
+  Workmanager().registerOneOffTask(
+    "1",
+    "simpleTask",
+    inputData: <String, dynamic>{
+      'int': 1,
+      'bool': true,
+      'double': 1.0,
+      'string': 'string',
+      'array': [1, 2, 3],
+    },); //Android only (see below)
+
   initializeDateFormatting('ko_kr', null);
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations(
@@ -1023,6 +1073,8 @@ class _WorkerListState extends State<WorkerList> {
               physics: const BouncingScrollPhysics(),
               itemBuilder: (context, index) {
                 final WorkerListMessage item = appState.workerLogMessages[index];
+
+               // var chktime = item.lastworkday!.add(const Duration(minutes: 3));
                 return Container(
                   alignment: Alignment.topCenter  ,
                   padding: EdgeInsets.all(fixPadding * 0),// const EdgeInsets.symmetric(vertical: 0),
@@ -1032,7 +1084,7 @@ class _WorkerListState extends State<WorkerList> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10.0),
                   ),
-                  child:(timeToWorkStart ==item.lastworkday)? ListTile(
+                  child:(timeToWorkStart == item.lastworkday/* chktime.isAfter(timeToWorkStart!)*/)? ListTile(
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(
                           builder: (context) =>
@@ -2083,6 +2135,7 @@ class ApplicationState extends ChangeNotifier {
 
       logger.warning('FireStore[FirebaseAuth] -------- userChanges()');
       if (user != null) {
+        //jay 1020 timeToWorkStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day,DateTime.now().hour,DateTime.now().minute);
         timeToWorkStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
        // displayPhoneNumber = user.phoneNumber;
         displayEmail = user.email!;
@@ -2116,9 +2169,15 @@ class ApplicationState extends ChangeNotifier {
               logger.warning('helmetElaspedTime: ${helmetElaspedTime}');
               listenWhoAmI?.cancel();
 
-              if(timeToWorkStart!=lastWokDay)
+              //1020 jay
+              //var chktime = lastWokDay!.add(const Duration(minutes: 3));
+              //logger.warning(chktime);
+              //logger.warning(timeToWorkStart);
+              //if(chktime.isBefore(timeToWorkStart!))
+
+              if(lastWokDay!.isBefore(timeToWorkStart!))
+              //if(timeToWorkStart!=lastWokDay /*||helmetElaspedTime >239000*/)
               {
-                //_stopWatchTimer.onExecute.add(StopWatchExecute.reset);
                 logger.warning('today is not today');
                 lastWokDay = timeToWorkStart;
                 attendees=0;
@@ -2145,22 +2204,37 @@ class ApplicationState extends ChangeNotifier {
                   logger.warning('stopwatch timer(helmetElaspedTime) : ${helmetElaspedTime}');
                 }
 
+
+                /*var preTimeToWorkStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day,DateTime.now().hour,DateTime.now().minute);
+                var chktime = lastWokDay!.add(const Duration(minutes: 3));
+                if(chktime.isBefore(preTimeToWorkStart))
+                  timeToWorkStart =preTimeToWorkStart;
+                logger.warning(lastWokDay);
+                logger.warning(timeToWorkStart);
+                if(lastWokDay!=timeToWorkStart)*/
+
+
+                //if(timeToWorkStart!=lastWokDay /*||helmetElaspedTime >239000*/)
+
                 timeToWorkStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
 
-                if(timeToWorkStart!=lastWokDay)
+                if(lastWokDay!.isBefore(timeToWorkStart!))
                 {
+                  _stopWatchTimer.onExecute.add(StopWatchExecute.stop);
                   _stopWatchTimer.onExecute.add(StopWatchExecute.reset);
                   _stopWatchTimer.setPresetTime(mSec:0);
-                  if(isHelmetDisconnected==false) {
+                  if(beltState==true) {
                     _stopWatchTimer.onExecute.add(StopWatchExecute.start);
+                    attendees = 1; //add jay 1019 : 타임리셋 할때 연결 카운트는 1이 되게
+                  } else {
+                    attendees = 0;
                   }
                   logger.warning('today is not today on the playing');
                   lastWokDay = timeToWorkStart;
-                  attendees = 0;
                   helmetElaspedTime = 0;
                 }
                 setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime,lastWokDay, attendees);
-
+                addlogToGuestBook('1mlog');
 
                 /*
                 Geolocator.getCurrentPosition().then((value) async  {
@@ -2214,19 +2288,19 @@ class ApplicationState extends ChangeNotifier {
                         phone:(document.data()['phone']==null)?'01012345678':document.data()['phone'] ,
                         workzone: (document.data()['workzone']==null)?'none':document.data()['workzone'],
                         role: (document.data()['role']==null)?'none':document.data()['role'],
-                        belt: (document.data()['beltState']==null|| lastWokDay != getLastWorkDayDateTime?4:document.data()['beltState']),
+                        belt: (document.data()['beltState']==null||lastWokDay/*관리자의 오늘*/ != getLastWorkDayDateTime)?4/* 1020 jay 워커리스트 중 마지막에 뜨게하기위해 4로 , 1미착용,2연결해제,3착용중*/:document.data()['beltState'],
                         worktime: (document.data()['helmettime']==null)?0:document.data()['helmettime'],
                         location: document.data()['geopoint'],
                         accident: (document.data()['beltcount']==null)?0:document.data()['beltcount'],
                         lastworkday:getLastWorkDayDateTime ,
                       ),
                     );
-                    logger.warning('name:${document.data()['name']}');
+                    logger.warning('name:${document.data()['name']}, ${document.data()['beltState']}');
 
                   });
+                  _workerLogMessages.sort((b,a) => a.lastworkday!.compareTo(b.lastworkday!)); //1020 jay 날짜순 정렬 추가
                   _workerLogMessages.sort((a,b) => a.belt.compareTo(b.belt));
-                  //_workerLogMessages.sort((a,b) => a.lastworkday.compareTo(b.lastworkday));
-                  notifyListeners();
+                    notifyListeners();
                 });
 
                 await FirebaseFirestore.instance
@@ -2508,7 +2582,6 @@ class ApplicationState extends ChangeNotifier {
                 });
               }
               else {
-
                 await FirebaseFirestore.instance
                     .collection('guestbook2')
                     .where('userId',isEqualTo:user.uid) //jay user
@@ -2522,7 +2595,6 @@ class ApplicationState extends ChangeNotifier {
                     String formattedTime = DateFormat('HH시mm분').format(date);
 
                     //logger.warning(document.data()['text']);
-
                     _accidentMessages.add(
                       AccidentMessage(
                         uid: document.data()['userId'],
@@ -2997,7 +3069,7 @@ StreamSubscription? noti;
 StreamSubscription? notistate;
 StreamSubscription? btstateMachine;
 bool isConnected=false;
-bool isHelmetDisconnected=false;
+bool isBluetoothDisconnectOnBeltConnected=false;
 double geolatitude=0;
 double geolongitude=0;
 
@@ -4830,17 +4902,17 @@ class _HomePageState extends State<HomePage> {
                       _setAsset('assets/audio/conBelt.mp3');
                       _setLoopMode(LoopMode.off);
 
-                      logger.warning('beltstate T: ${iuserId}, ${attendees}');
+                      logger.warning('Notify beltstate T: ${iuserId}, ${attendees}');
                       setMyBeltState(iuserId,3, ++attendees);
                      // setAccidentIncrease(iuserId, attendees); //jay set my bel state 함수 안으로 이동
                     }
-                    else if(btMessage.contains('Belt Disconnected')) {
+                    else if(btMessage.contains('Belt Disconnected')&&beltState==true) {
                       state = '턱끈해제';
                       beltState = false;
                       _setAsset('assets/audio/belt0.mp3');
                       _setLoopMode(LoopMode.off);
 
-                      logger.warning('beltstate F: ${iuserId}, ${attendees}');
+                      logger.warning('Notify beltstate F: ${iuserId}, ${attendees}');
                       setMyBeltState(iuserId, 1 , 0);
                     }
                     else if(btMessage.contains('EM')) {
@@ -5309,13 +5381,15 @@ class _HomePageState extends State<HomePage> {
 
               btstateMachine?.cancel();
               btstateMachine = bTdevice?.state.listen((event) async {
+
+              logger.warning('-------- Bt State Change : bTdevice.state' +event.toString()+ ', isConnected:'+isConnected.toString()+ ', isBluetoothDisconnectOnBeltConnected:'+isBluetoothDisconnectOnBeltConnected.toString()+', beltState:'+beltState.toString()+', isDissconnectbyMenu:'+isDissconnectbyMenu.toString() );
+
+
                 if(event==BluetoothDeviceState.disconnected &&isConnected==true) {
                     logger.warning('-------- Bt State Disconnected --------');
                     writecharacteristic=0;
                     isConnected=false;
-                    if(!beltState) {
-                      beltState=false;
-                    } else {
+                    if(beltState==true) { //belt 연결된 상태에서 BT가 끊어 졌을때..
                       if(isDissconnectbyMenu==true) {
                         _stopSound();
                         addNewPopupU("연결끊기"/*유저의 의도적 (메뉴)연결해제*/, 3);
@@ -5330,8 +5404,9 @@ class _HomePageState extends State<HomePage> {
                         addNewPopupU("연결해제", 15);
                         //setMyBeltState(iuserId,2, 0);
                       }
+                      beltState = false; //1019: add by jay bt noty가 안오므로 여기서 false해줘야함
                       //setMyHelmetBtState(iuserId, false);
-                      isHelmetDisconnected=true;
+                      isBluetoothDisconnectOnBeltConnected=true; //강제 연결해제
                       isDissconnectbyMenu=false;
                     }
                     _timer_bat?.cancel();
@@ -5339,12 +5414,11 @@ class _HomePageState extends State<HomePage> {
                   }
                 else if(event==BluetoothDeviceState.connected &&isConnected==false){
                   logger.warning('-------- Bt State connected ---------');
-                  if(isHelmetDisconnected)
-                    {
+                  if(isBluetoothDisconnectOnBeltConnected) {
                       _stopSound();
                       if(_counterA==0) {
                         addStateToGuestBook('연결복귀');
-                        setMyBeltState(iuserId,3, attendees); //전원이랑 턱끈이랑 연결되엉있어 BT가 연결되면 턲끈이 있다 봐도 무방함
+                        // 1019 jay BT Noti에서 어짜피 붙여주니까. 그대로 두면 턱끈없이 BT연결되도 BT set 됨. setMyBeltState(iuserId,3, attendees); //전원이랑 턱끈이랑 연결되엉있어 BT가 연결되면 턲끈이 있다 봐도 무방함
                       }
                       //_counterA=0;
                       _timer?.cancel();
@@ -5353,10 +5427,10 @@ class _HomePageState extends State<HomePage> {
                         Navigator.of(context, rootNavigator: true).pop(false);
                       }
                       isDissconnectbyMenu=false;
-                    }
+                  }
 
                  // setMyHelmetBtState(iuserId, true);
-                  isHelmetDisconnected=false;
+                  isBluetoothDisconnectOnBeltConnected=false;
                   isConnected = true;
                   await connectMyProtocol( bTdevice);
 
