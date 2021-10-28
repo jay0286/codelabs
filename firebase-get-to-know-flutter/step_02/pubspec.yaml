@@ -33,6 +33,7 @@ dependencies:
   #flutter_background_geolocation: '^4.2.1'
   background_location: ^0.7.0
   workmanager: ^0.4.1
+  shared_preferences: ^2.0.8
 
 
 

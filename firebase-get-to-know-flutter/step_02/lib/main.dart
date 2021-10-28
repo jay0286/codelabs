@@ -30,12 +30,16 @@ import 'package:simple_logger/simple_logger.dart';
 import 'package:stop_watch_timer/stop_watch_timer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:workmanager/workmanager.dart';
+
 import '/constant/constant.dart';
 import '/pages/splashScreen.dart';
 import 'src/authentication.dart';                  // new
 import 'src/widgets.dart';
 import 'widgets.dart';
-import 'package:workmanager/workmanager.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 final logger = SimpleLogger();
 
@@ -365,15 +369,16 @@ DateTime? timeToWorkStart ;
 
 DateTime? lastWokDay ;
 class FindDevicesScreen extends StatefulWidget {
-
   @override
   _FindDevicesScreenState createState() => _FindDevicesScreenState();
 }
 
 class _FindDevicesScreenState extends State<FindDevicesScreen> {
   @override
-  void initState() {
+  void initState()  {
     // TODO: implement initState
+
+
     FlutterBlue.instance.startScan(timeout: const Duration(seconds: 4));
     super.initState();
   }
@@ -959,18 +964,25 @@ void main() {
 class MyApp2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
+    logger.shout('MyApp2 build');
+    //FlutterBlue.instance.startScan(timeout: const Duration(seconds: 2));
+    return ScreenUtilInit( //desc: 화면, 글꼴 크기 등을 조절하는 위젯
       designSize: Size(360, 690),
       builder: () => MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Smart Helmet',
         theme: ThemeData(
-          primarySwatch: Colors.red,
-          primaryColor: primaryColor,
+          buttonTheme: Theme.of(context).buttonTheme.copyWith(
+            highlightColor: Colors.deepPurple,
+          ),
+          primarySwatch: Colors.deepPurple,
+          textTheme: GoogleFonts.robotoTextTheme(
+            Theme.of(context).textTheme,
+          ),
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
         builder: (context, widget) {
-          return MediaQuery(
+          return MediaQuery( //desc: 시스템정보를 바탕으로 앱크기 등을 알아내는 위젯
             ///Setting font does not change with system font size
             data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
             child: widget!,
@@ -2217,7 +2229,7 @@ class ApplicationState extends ChangeNotifier {
                 //if(timeToWorkStart!=lastWokDay /*||helmetElaspedTime >239000*/)
 
                 timeToWorkStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-
+                //timeToWorkStart =DateTime(timeToWorkStart.year,timeToWorkStart.month,timeToWorkStart.day)
                 if(lastWokDay!.isBefore(timeToWorkStart!))
                 {
                   _stopWatchTimer.onExecute.add(StopWatchExecute.stop);
@@ -2582,6 +2594,7 @@ class ApplicationState extends ChangeNotifier {
                 });
               }
               else {
+                //자기 개인 데이터 변화 구독하기
                 await FirebaseFirestore.instance
                     .collection('guestbook2')
                     .where('userId',isEqualTo:user.uid) //jay user
@@ -2610,6 +2623,7 @@ class ApplicationState extends ChangeNotifier {
                   });
                 });
 
+                //같은지역 다른 사람 사고 소식 구독하기
                 _guestBookSubscription?.cancel();
                 _guestBookSubscription = FirebaseFirestore.instance
                     .collection('guestbook2')
@@ -3012,53 +3026,28 @@ class ApplicationState extends ChangeNotifier {
 }
 
 
-class App extends StatelessWidget {
+class App2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: scaffoldBgColor,
-        body: WillPopScope(
-        onWillPop: () async {
-      bool backStatus = onWillPop();
-      if (backStatus) {
-        Future.value(true);//exit(0);
-      }
-      return false;
-    },
-    child: MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Smart Helmet',
-      //title: 'Firebase Meetup',
-      theme: ThemeData(
-        buttonTheme: Theme.of(context).buttonTheme.copyWith(
-              highlightColor: Colors.deepPurple,
+        body: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Smart Helmet',
+            //title: 'Firebase Meetup',
+            theme: ThemeData(
+              buttonTheme: Theme.of(context).buttonTheme.copyWith(
+                highlightColor: Colors.deepPurple,
+              ),
+              primarySwatch: Colors.deepPurple,
+              textTheme: GoogleFonts.robotoTextTheme(
+                Theme.of(context).textTheme,
+              ),
+              visualDensity: VisualDensity.adaptivePlatformDensity,
             ),
-        primarySwatch: Colors.deepPurple,
-        textTheme: GoogleFonts.robotoTextTheme(
-          Theme.of(context).textTheme,
-        ),
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: const HomePage()/* FlutterBlueApp()*/,
-    ),
-      ),
+            home: const HomePage()/* FlutterBlueApp()*/,
+          ),
     );
-  }
-
-  onWillPop() {
-    DateTime now = DateTime.now();
-    if (currentBackPressTime == null ||
-        now.difference(currentBackPressTime!) > const Duration(seconds: 2)) {
-      currentBackPressTime = now;
-      Fluttertoast.showToast(
-        msg: '앱의 최상위 메뉴 입니다',
-        backgroundColor: Colors.black,
-        textColor: whiteColor,
-      );
-      return false;
-    } else {
-      return true;
-    }
   }
 }
 
@@ -4766,7 +4755,6 @@ void newAlertD(BuildContext context, String name, String location, String state)
 }
 
 int _counter = 0;
-
 Timer? _timer;
 
 StreamController<int>? _events;
@@ -4783,6 +4771,47 @@ class _HomePageState extends State<HomePage> {
   StreamController<int>? _events;
   StreamController<int>? _eventsA;
 
+  bool onWillPop() {
+    setState(() {
+      _currentIndex = 0;
+    });
+    DateTime now = DateTime.now();
+    if (currentBackPressTime == null ||
+        now.difference(currentBackPressTime!) > const Duration(seconds: 1)) {
+      currentBackPressTime = now;
+      /*
+      Fluttertoast.showToast(
+        msg: '앱의 최상위 메뉴 입니다',
+        backgroundColor: Colors.black,
+        textColor: whiteColor,
+      );*/
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  Future<bool> disconectUnintentionalDevice() async {
+    List<BluetoothDevice> connectedDevices = await flutterBlue.connectedDevices;
+
+    logger.severe('disconectUnintentionalDevice:${connectedDevices}');
+    if(connectedDevices.isNotEmpty) {
+      logger.warning('connectedDevices.isNotEmpty');
+      if (connectedDevices[0].name.contains('Smart Helmet')) {
+        //logger.warning('connectedDevices[0].disconnect');
+        await connectedDevices[0].disconnect();
+        await connectedDevices[0].connect();
+        await connectMyProtocol(connectedDevices[0]);
+        return true;
+      }
+      //디스커넥트 되고 실제 반영될려면..
+    }
+    //else {
+    //  FlutterBlue.instance.startScan(timeout: const Duration(seconds: 4));
+    //}
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -4790,7 +4819,7 @@ class _HomePageState extends State<HomePage> {
     //ble instance 생성
     flutterBlue = FlutterBlue.instance;
     BackgroundLocation.setAndroidNotification(
-      title: "Notification title",
+      title: "smarthelmet notificaton",
       message: "Notification message",
       icon: "@mipmap/ic_launcher",
     );
@@ -4801,6 +4830,9 @@ class _HomePageState extends State<HomePage> {
       geolatitude=location.latitude!;
       geolongitude=location.longitude!;
     });
+
+    logger.shout('Homepage Init');
+    //disconectUnintentionalDevice();
 /*
     Geolocator.getCurrentPosition().then((value) =>
     {
@@ -4844,27 +4876,38 @@ class _HomePageState extends State<HomePage> {
     return num * num;
   }
 
+
   Future<void> connectMyProtocol(BluetoothDevice? device) async {
+    //Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+    //final SharedPreferences prefs = await _prefs;
+
     if(device == null) { logger.warning('connectMyProtocol null return'); return;}
     logger.warning('connectMyProtocol ');
-    List<BluetoothService> services = await device.discoverServices();
+    //List<BluetoothService> services = await device.discoverServices();
     // CODE DOES NOT
     logger.warning('div');
     notistate?.cancel();
     notistate= device.state.listen((bstate) {
       logger.warning('device.state: {$bstate}');
-      if (bstate == BluetoothDeviceState.connected) {
+      if (bstate == BluetoothDeviceState.connected)  {
+
+        //prefs.setString('lasthelmet', device.name);
+        //logger.shout(prefs.getInt('lasthelmet'));
+
         device.discoverServices().then((dservice) {
-          services = dservice;
-          for(BluetoothService service in services) {
+          //services = dservice;
+          for(BluetoothService service in dservice) {
+
+            logger.severe('discoverServices  : ${service.uuid.toString()}');
             if(service.uuid.toString().contains('6e400001') )
             {
               // Reads all characteristics
               var characteristics = service.characteristics;
               for(BluetoothCharacteristic c in characteristics) {
+                logger.warning('characteristics  : ${c.uuid.toString()}');
                 if (c.uuid.toString().contains('6e400002'))
                 {
-                  //logger.warning('get characteristic 4 belt status');
+                  logger.severe('keep writecharacteristic');
                   writecharacteristic = c;
                 }
 
@@ -4883,7 +4926,9 @@ class _HomePageState extends State<HomePage> {
                       if(adcBatt>2100) {
                         _timer_bat?.cancel();
                         _timer_bat = Timer.periodic(const Duration(seconds: 60), (timer) {
-                          writecharacteristic.write(utf8.encode('req bat'));
+                          if(writecharacteristic!=null) {
+                            writecharacteristic.write(utf8.encode('req bat'));
+                          }
                         });
                       }
 
@@ -5332,203 +5377,236 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: scaffoldBgColor,
-      appBar: AppBar(
-        title: const Text('작업장의 안전을 지키는 스마트 안전헬멧'),
-        //title: const Text('안전과 건강을 지키는 \'휴비딕 헬스 시큐리티\''),
-        actions: <Widget>[
-          StreamBuilder<BluetoothDeviceState>(
-            stream: bTdevice?.state,
-            initialData: BluetoothDeviceState.disconnected,
-            builder: (c, snapshot) {
-              VoidCallback? _onPressed;
-              String text;
-              switch (snapshot.data) {
+    logger.shout('Homepage build');
+   return WillPopScope(
+      onWillPop: () async {
+        bool backStatus = onWillPop();
+        if (backStatus) {
+          Future.value(true);//exit(0);
+        }
+        return false;
+      },
+      child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Smart Helmet',
+          theme: ThemeData(
+            buttonTheme: Theme.of(context).buttonTheme.copyWith(
+              highlightColor: Colors.deepPurple,
+            ),
+            primarySwatch: Colors.deepPurple,
+            textTheme: GoogleFonts.robotoTextTheme(
+              Theme.of(context).textTheme,
+            ),
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+          ),
+          home: Scaffold(
+            backgroundColor: scaffoldBgColor,
+            appBar: AppBar(
+              title: const Text('작업장의 안전을 지키는 스마트 안전헬멧'),
+              //title: const Text('안전과 건강을 지키는 \'휴비딕 헬스 시큐리티\''),
+              actions: <Widget>[
+                StreamBuilder<BluetoothDeviceState>(
+                  stream: bTdevice?.state,
+                  initialData: BluetoothDeviceState.disconnected,
+                  builder: (c, snapshot) {
+                    VoidCallback? _onPressed;
+                    String text;
+                    switch (snapshot.data) {
 
-                case BluetoothDeviceState.connected:
-                  _onPressed = () async {isDissconnectbyMenu=true; await bTdevice?.disconnect();};
-                  //beltState = false;
-                  logger.warning('beltStateScaffold:'+beltState.toString());
-                  text = ' 연결끊기';
-                  //text = ' 연결됨';
-                  /*_onPressed = () async {
+                      case BluetoothDeviceState.connected:
+                        _onPressed = () async {isDissconnectbyMenu=true; await bTdevice?.disconnect();};
+                        //beltState = false;
+                        logger.warning('beltStateScaffold:'+beltState.toString());
+                        text = ' 연결끊기';
+                        //text = ' 연결됨';
+                        /*_onPressed = () async {
                     logger.warning('reset stopwatch');
                     //_stopWatchTimer.onExecute.add(StopWatchExecute.stop);
                     _stopWatchTimer.onExecute.add(StopWatchExecute.reset);
                     _stopWatchTimer.setPresetTime(mSec:0);
                     _stopWatchTimer.onExecute.add(StopWatchExecute.start);
                   };*/
-                  break;
-                case BluetoothDeviceState.disconnected:
-                   _onPressed = () =>//launch('tel://+821040590286'); // newAlertD(context, displayName!, '응급상황');
-                       Navigator.of(context).push(
-                           MaterialPageRoute(
-                               builder: (context) =>
-                                   FindDevicesScreen())).then((value) =>
-                           setState(() {})); //_startscan();
-                   batteryPercent =0;
-                   logger.warning(bTdevice?.name);
-                   text = ' 연결하기';
-                  break;
-                default:
-                  _onPressed = () =>
-                       Navigator.of(context).push(MaterialPageRoute( builder: (context) =>
-                           FindDevicesScreen())).then((value) => setState(() {}));
-                  text = snapshot.data.toString().substring(21).toUpperCase();
-                  break;
-              }
+                        break;
+                      case BluetoothDeviceState.disconnected:
+                        _onPressed = () =>//launch('tel://+821040590286'); // newAlertD(context, displayName!, '응급상황');
+                        Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    FindDevicesScreen())).then((value) =>
+                            setState(() {})); //_startscan();
+                        batteryPercent =0;
+                        logger.warning(bTdevice?.name);
+                        text = ' 연결하기';
+                        break;
+                      default:
+                        _onPressed = () =>
+                            Navigator.of(context).push(MaterialPageRoute( builder: (context) =>
+                                FindDevicesScreen())).then((value) => setState(() {}));
+                        text = snapshot.data.toString().substring(21).toUpperCase();
+                        break;
+                    }
 
-              btstateMachine?.cancel();
-              btstateMachine = bTdevice?.state.listen((event) async {
+                    btstateMachine?.cancel();
+                    btstateMachine = bTdevice?.state.listen((event) async {
 
-              logger.warning('-------- Bt State Change : bTdevice.state' +event.toString()+ ', isConnected:'+isConnected.toString()+ ', isBluetoothDisconnectOnBeltConnected:'+isBluetoothDisconnectOnBeltConnected.toString()+', beltState:'+beltState.toString()+', isDissconnectbyMenu:'+isDissconnectbyMenu.toString() );
+                      logger.warning('-------- Bt State Change : bTdevice.state' +event.toString()+ ', isConnected:'+isConnected.toString()+ ', isBluetoothDisconnectOnBeltConnected:'+isBluetoothDisconnectOnBeltConnected.toString()+', beltState:'+beltState.toString()+', isDissconnectbyMenu:'+isDissconnectbyMenu.toString() );
 
 
-                if(event==BluetoothDeviceState.disconnected &&isConnected==true) {
-                    logger.warning('-------- Bt State Disconnected --------');
-                    writecharacteristic=0;
-                    isConnected=false;
-                    if(beltState==true) { //belt 연결된 상태에서 BT가 끊어 졌을때..
-                      if(isDissconnectbyMenu==true) {
-                        _stopSound();
-                        addNewPopupU("연결끊기"/*유저의 의도적 (메뉴)연결해제*/, 3);
-                      }
-                      else {
-                        _stopSound();
-                        /*
+                      if(event==BluetoothDeviceState.disconnected &&isConnected==true) {
+                        logger.warning('-------- Bt State Disconnected --------');
+                        writecharacteristic=0;
+                        isConnected=false;
+                        if(beltState==true) { //belt 연결된 상태에서 BT가 끊어 졌을때..
+                          if(isDissconnectbyMenu==true) {
+                            _stopSound();
+                            addNewPopupU("연결끊기"/*유저의 의도적 (메뉴)연결해제*/, 3);
+                          }
+                          else {
+                            _stopSound();
+                            /*
                         _setAsset('assets/audio/alram beeps.mp3');
                         _setLoopMode(LoopMode.one);
                         _playSound();
                          */
-                        addNewPopupU("연결해제", 15);
-                        //setMyBeltState(iuserId,2, 0);
+                            addNewPopupU("연결해제", 15);
+                            //setMyBeltState(iuserId,2, 0);
+                          }
+                          beltState = false; //1019: add by jay bt noty가 안오므로 여기서 false해줘야함
+                          //setMyHelmetBtState(iuserId, false);
+                          isBluetoothDisconnectOnBeltConnected=true; //강제 연결해제
+                          isDissconnectbyMenu=false;
+                        }
+                        _timer_bat?.cancel();
+                        _timer_beltinit?.cancel();
                       }
-                      beltState = false; //1019: add by jay bt noty가 안오므로 여기서 false해줘야함
-                      //setMyHelmetBtState(iuserId, false);
-                      isBluetoothDisconnectOnBeltConnected=true; //강제 연결해제
-                      isDissconnectbyMenu=false;
-                    }
-                    _timer_bat?.cancel();
-                    _timer_beltinit?.cancel();
-                  }
-                else if(event==BluetoothDeviceState.connected &&isConnected==false){
-                  logger.warning('-------- Bt State connected ---------');
-                  if(isBluetoothDisconnectOnBeltConnected) {
-                      _stopSound();
-                      if(_counterA==0) {
-                        addStateToGuestBook('연결복귀');
-                        // 1019 jay BT Noti에서 어짜피 붙여주니까. 그대로 두면 턱끈없이 BT연결되도 BT set 됨. setMyBeltState(iuserId,3, attendees); //전원이랑 턱끈이랑 연결되엉있어 BT가 연결되면 턲끈이 있다 봐도 무방함
+                      else if(event==BluetoothDeviceState.connected &&isConnected==false){
+                        logger.warning('-------- Bt State connected ---------');
+                        if(isBluetoothDisconnectOnBeltConnected) {
+                          _stopSound();
+                          if(_counterA==0) {
+                            addStateToGuestBook('연결복귀');
+                            // 1019 jay BT Noti에서 어짜피 붙여주니까. 그대로 두면 턱끈없이 BT연결되도 BT set 됨. setMyBeltState(iuserId,3, attendees); //전원이랑 턱끈이랑 연결되엉있어 BT가 연결되면 턲끈이 있다 봐도 무방함
+                          }
+                          //_counterA=0;
+                          _timer?.cancel();
+                          if(isDissconnectbyMenu ==false&&isDialogAlive==true) {
+                            isDialogAlive=false;
+                            Navigator.of(context, rootNavigator: true).pop(false);
+                          }
+                          isDissconnectbyMenu=false;
+                        }
+
+                        // setMyHelmetBtState(iuserId, true);
+                        isBluetoothDisconnectOnBeltConnected=false;
+                        isConnected = true;
+                        await connectMyProtocol( bTdevice);
+
+                        _timer_beltinit?.cancel();
+                        _timer_beltinit = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+                          logger.warning('req belt => current beltstate:'+ beltState.toString());
+                          if (beltState==false){
+                            if(writecharacteristic!=null) {
+                              writecharacteristic.write(utf8.encode('belt status'));
+                            }
+
+                          }
+                          else{
+                            _timer_beltinit?.cancel();
+                          }
+                        });
+
+                        _timer_bat?.cancel();
+                        _timer_bat = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+                          logger.warning('req batt');
+                          if(writecharacteristic!=null) {
+                            writecharacteristic.write(utf8.encode('req bat'));
+                          }
+                        });
+
                       }
-                      //_counterA=0;
-                      _timer?.cancel();
-                      if(isDissconnectbyMenu ==false&&isDialogAlive==true) {
-                        isDialogAlive=false;
-                        Navigator.of(context, rootNavigator: true).pop(false);
-                      }
-                      isDissconnectbyMenu=false;
-                  }
+                      btState=event;
+                      logger.warning('---------- End of appBarState:listen ----------');
 
-                 // setMyHelmetBtState(iuserId, true);
-                  isBluetoothDisconnectOnBeltConnected=false;
-                  isConnected = true;
-                  await connectMyProtocol( bTdevice);
-
-                  _timer_beltinit?.cancel();
-                  _timer_beltinit = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-                  logger.warning('req belt => current beltstate:'+ beltState.toString());
-                  if (beltState==false){
-                      writecharacteristic.write(utf8.encode('belt status'));}
-                  else{
-                      _timer_beltinit?.cancel();}
-                  });
-
-                  _timer_bat?.cancel();
-                  _timer_bat = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-                      logger.warning('req batt');
-                      writecharacteristic.write(utf8.encode('req bat'));
-                  });
-
-                }
-                btState=event;
-                logger.warning('---------- End of appBarState:listen ----------');
-
-              });
-              return ElevatedButton(
-                  onPressed:_onPressed,
-                    /*
+                    });
+                    return ElevatedButton(
+                        onPressed:_onPressed,
+                        /*
                     () {
                      logger.warning('--------------');
                      logger.warning(bTdevice?.name);
                      _onPressed;
                   },*/
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const Icon(Icons.battery_std, color: Colors.white),
-                      Text(
-                        batteryPercent.round().toString()+'%  ',
-                        style: Theme.of(context)
-                            .primaryTextTheme
-                            .button
-                            ?.copyWith(color: Colors.white,fontSize: 18),
-                      ),
-                        (text == ' 연결끊기')
-                          ? const Icon(Icons.bluetooth_connected_rounded, color: Colors.white)
-                          : const Icon(Icons.bluetooth_searching_outlined, color: Colors.white),
-                      Text(
-                        text,
-                        style: Theme.of(context)
-                            .primaryTextTheme
-                            .button
-                            ?.copyWith(color: Colors.white,fontSize: 18),
-                      ),
-                    ]
-                  )
-              );
-            },
-          )
-        ],
-      ),
+                        child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              const Icon(Icons.battery_std, color: Colors.white),
+                              Text(
+                                batteryPercent.round().toString()+'%  ',
+                                style: Theme.of(context)
+                                    .primaryTextTheme
+                                    .button
+                                    ?.copyWith(color: Colors.white,fontSize: 18),
+                              ),
+                              (text == ' 연결끊기')
+                                  ? const Icon(Icons.bluetooth_connected_rounded, color: Colors.white)
+                                  : const Icon(Icons.bluetooth_searching_outlined, color: Colors.white),
+                              Text(
+                                text,
+                                style: Theme.of(context)
+                                    .primaryTextTheme
+                                    .button
+                                    ?.copyWith(color: Colors.white,fontSize: 18),
+                              ),
+                            ]
+                        )
+                    );
+                  },
+                )
+              ],
+            ),
 
+            body: Stack(
+              children: [
+                Container(child: (role=='manager') ? _bodyManager[_currentIndex]:_bodyWorker[_currentIndex]),
+              ],
+            ),
 
-      //body: (logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') ? _bodyManager[_currentIndex]:_bodyWorker[_currentIndex],
-      body: (role=='manager') ? _bodyManager[_currentIndex]:_bodyWorker[_currentIndex],
-       //bottomNavigationBar: (logEmail=='jay@tinkerbox.kr'||logEmail=='uzbrainnet@gmail.com') ? BottomNavigationBar(
-      bottomNavigationBar: (role=='manager') ? BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          onTap: _onTap,
-          currentIndex: _currentIndex,
-          // ignore: prefer_const_literals_to_create_immutables
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              title: Text('홈'),
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.find_in_page),
-              title: Text('작업자현황'),
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              title: Text('프로필'),
-            ),
-          ]):BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          onTap: _onTap,
-          currentIndex: _currentIndex,
-          // ignore: prefer_const_literals_to_create_immutables
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              title: Text('홈'),
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              title: Text('프로필'),
-            ),
-          ]),
-    );
+            bottomNavigationBar: (role=='manager') ? BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                onTap: _onTap,
+                currentIndex: _currentIndex,
+                // ignore: prefer_const_literals_to_create_immutables
+                items: [
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    title: Text('홈'),
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.find_in_page),
+                    title: Text('작업자현황'),
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.person),
+                    title: Text('프로필'),
+                  ),
+                ]):BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                onTap: _onTap,
+                currentIndex: _currentIndex,
+                // ignore: prefer_const_literals_to_create_immutables
+                items: [
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    title: Text('홈'),
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.person),
+                    title: Text('프로필'),
+                  ),
+                ]),
+          ),
+        ),
+   );
   }
 }
 
