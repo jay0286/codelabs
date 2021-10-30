@@ -449,9 +449,6 @@ void alertD(BuildContext context, String State) async {
 
 Future<void> connectMyProtocol(BluetoothDevice? device) async {
 
-  //Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
-  //final SharedPreferences prefs = await _prefs;
-
   if(device == null) { logger.warning('connectMyProtocol null return'); return;}
   logger.warning('connectMyProtocol ');
   //List<BluetoothService> services = await device.discoverServices();
@@ -463,8 +460,6 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
     btState = bstate;
     if (bstate == BluetoothDeviceState.connected)  {
 
-      //prefs.setString('lasthelmet', device.name);
-      //logger.shout(prefs.getInt('lasthelmet'));
 
       device.discoverServices().then((dservice) {
         //services = dservice;
@@ -1033,16 +1028,29 @@ class _FindDevicesScreenState extends State<FindDevicesScreen> {
                       result: r,
                       onTap: () async {
                         logger.warning('its work: ${logState}');
-                        //if(logState==true) {
+                        if(logState==true) {
+                          Future<SharedPreferences> _prefs =  SharedPreferences.getInstance();
+                          final SharedPreferences prefs = await _prefs;
                           bTdevice = r.device;
                           await bTdevice?.connect();
-                       // }
-                        // 1028 Navigator.pop(context, false);
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) =>
-                                ParingScreen(bTdevice: bTdevice, scanevent:1),
-                            ));
+                          prefs.setString('lasthelmet', bTdevice!.name);
+                          logger.shout('Set My Helmet name: '+ prefs.getString('lasthelmet')!);
+
+                          // 1028 Navigator.pop(context, false);
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) =>
+                                  ParingScreen(bTdevice: bTdevice, scanevent:1),
+                              ));
+
+                        } else {
+                          Fluttertoast.showToast(
+                            msg: '로그인 후 안전모 연결이 가능합니다',
+                            backgroundColor: Colors.black,
+                            textColor: whiteColor,
+                          );
+                        }
+
                         },
                           /*Navigator.of(context)
                           .push(MaterialPageRoute(builder: (context) {
@@ -1533,7 +1541,7 @@ void callbackDispatcher() {
 
 void main() {
 
-  batteryPercent= StreamController<double>();
+  batteryPercent= StreamController<double>.broadcast(); //jay broadcast로 하지 않으면 새로 빌드 될때 새로 스트림 수신이 생기며 에러가 발생함.
   //batteryPercent = ValueNotifier<double>(0);
 
 /*
@@ -3359,7 +3367,7 @@ class ApplicationState extends ChangeNotifier {
         displayEmail = '사용자 정보 없음';
         logger.warning('logout ');
         role = 'worker';
-        bTdevice?.disconnect();
+        //bTdevice?.disconnect();
         logState = false;
         _loginState = ApplicationLoginState.loggedOut;
         _guestBookMessages = [];
@@ -5516,10 +5524,22 @@ class _HomePageState extends State<HomePage> {
                     switch (snapshot.data) {
 
                       case BluetoothDeviceState.connected:
-                        _onPressed = () async {isDissconnectbyMenu=true; await bTdevice?.disconnect();};
-                        //beltState = false;
                         logger.warning('BTstate.connected + Belt state:'+beltState.toString());
                         text = ' 연결끊기';
+                        _onPressed = () async {
+
+                          if (logState == true) {
+                            isDissconnectbyMenu = true;
+                            await bTdevice?.disconnect();
+                          }else {
+                            Fluttertoast.showToast(
+                              msg: '로그인 후 수행 할 수 있는 기능입니다',
+                              backgroundColor: Colors.black,
+                              textColor: whiteColor,
+                            );
+                          }
+                        };
+                        //beltState = false;
                         //text = ' 연결됨';
                         /*_onPressed = () async {
                     logger.warning('reset stopwatch');
@@ -5531,15 +5551,24 @@ class _HomePageState extends State<HomePage> {
                         break;
                       case BluetoothDeviceState.disconnected:
                         logger.warning('BTstate.disconnected + Belt state:'+beltState.toString());
-                        _onPressed = () =>//launch('tel://+821040590286'); // newAlertD(context, displayName!, '응급상황');
-                        Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    FindDevicesScreen())).then((value) =>
-                            setState(() {})); //_startscan();
                         //batteryPercent!.value =0;
                         batteryPercent?.add(0);
                         text = ' 연결하기';
+                        _onPressed = () {
+                          if (logState == true) {
+                            Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        FindDevicesScreen())).then((value) =>
+                                setState(() {})); //_startscan();
+                          } else {
+                            Fluttertoast.showToast(
+                              msg: '로그인 후 안전모 연결이 가능합니다',
+                              backgroundColor: Colors.black,
+                              textColor: whiteColor,
+                            );
+                          }
+                        };
                         break;
                       default:
                         _onPressed = () =>
@@ -5555,28 +5584,25 @@ class _HomePageState extends State<HomePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               const Icon(Icons.battery_std, color: Colors.white),
-                            StreamBuilder<double>(
-                              stream: batteryPercent?.stream,
-                              initialData: 0,
-                              builder: (c, snapshot) {
-                                if(snapshot.hasData) {
-                                  return Text(
-                                    '${snapshot.data!.round().toString()}% ',
-                                    style: Theme.of(context)
-                                        .primaryTextTheme
-                                        .button
-                                        ?.copyWith(color: Colors.white,fontSize: 18),
-                                  );
-                                } else {
-                                  return Text(
-                                    '0% ',
-                                    style: Theme.of(context)
-                                        .primaryTextTheme
-                                        .button
-                                        ?.copyWith(color: Colors.white,fontSize: 18),
-                                  );
-                                }
-
+                              StreamBuilder<double>(
+                                stream: batteryPercent?.stream,
+                                initialData: 0,
+                                builder: (c, snapshot) {
+                                  if(snapshot.hasData) {
+                                    return Text(
+                                      '${snapshot.data!.round().toString()}% ',
+                                      style: Theme.of(context)
+                                          .primaryTextTheme
+                                          .button?.copyWith(color: Colors.white,fontSize: 18),
+                                    );
+                                  } else {
+                                    return Text(
+                                      '0% ',
+                                      style: Theme.of(context)
+                                          .primaryTextTheme
+                                          .button?.copyWith(color: Colors.white,fontSize: 18),
+                                    );
+                                  }
                                 },
                             ),
                             /*
