@@ -14,6 +14,17 @@ import 'package:provider/provider.dart';
 import '/constant/constant.dart';
 import '../main.dart';
 
+import './paringScreen.dart';
+
+
+String deviceName ='null';
+bool isBluetoothScanning = false;
+StreamController<int>? _event4Scan;
+
+StreamSubscription? subIsScanning;
+StreamSubscription? subEventScanning;
+StreamSubscription? subScanResult;
+
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -21,185 +32,77 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
 
-  Future<void> connectMyProtocol(BluetoothDevice? device) async {
-    //Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
-    //final SharedPreferences prefs = await _prefs;
-
-    if(device == null) { logger.warning('connectMyProtocol null return'); return;}
-
-    logger.warning('connectMyProtocol go on');
-    //List<BluetoothService> services = await device.discoverServices();
-    // CODE DOES NOT
-    notistate?.cancel();
-    notistate= device.state.listen((bstate) {
-      logger.severe('device.state: {$bstate}');
-      if (bstate == BluetoothDeviceState.connected)  {
-
-        //prefs.setString('lasthelmet', device.name);
-        //logger.shout(prefs.getInt('lasthelmet'));
-
-        device.discoverServices().then((services) {
-          //services = dservice;
-          for(BluetoothService service in services) {
-            if(service.uuid.toString().contains('6e400001') )
-            {
-              // Reads all characteristics
-              var characteristics = service.characteristics;
-              for(BluetoothCharacteristic c in characteristics) {
-                if (c.uuid.toString().contains('6e400002'))
-                {
-                  logger.warning('get characteristic 4 belt status');
-                  //writecharacteristic = c;
-                }
-
-                if(c.descriptors.isNotEmpty) {
-                  c.setNotifyValue(true);
-                  noti?.cancel();
-                  noti= c.value.listen((value) {
-                    String state='이상없음';
-                    //_stopSound();
-                    String btMessage = ascii.decode(value).toString();
-                    logger.warning('------------- Notify Listen -----------------');
-                    logger.warning('listenMsg: '+ btMessage.toString());
-                    if(btMessage.contains('BAT')){
-                      int adcBatt = int.parse(btMessage.substring(btMessage.lastIndexOf(",")+1));
-
-                      if(adcBatt>2100) {
-                        //_timer_bat?.cancel();
-                        //_timer_bat = Timer.periodic(const Duration(seconds: 60), (timer) {
-                          //writecharacteristic.write(utf8.encode('req bat'));
-                       // });
-                      }
-
-                      if(adcBatt>3006)
-                        adcBatt = 3006;
-                      else if(adcBatt<2300)
-                        adcBatt = 2300;
-                      setState(() {
-                        //batteryPercent =(((adcBatt-2300)/(3006-2300))*100);
-                      });
-
-                    }
-                    else if((btMessage.contains('Belt Connected')||btMessage.toString().contains('Belt Alive'))&&beltState==false) {
-                      state = '턱끈연결';
-                      beltState = true;
-                      //_setAsset('assets/audio/conBelt.mp3');
-                      //_setLoopMode(LoopMode.off);
-
-                      logger.warning('Notify beltstate T: ${iuserId}, ${attendees}');
-                      setMyBeltState(iuserId,3, ++attendees);
-                      // setAccidentIncrease(iuserId, attendees); //jay set my bel state 함수 안으로 이동
-                    }
-                    else if(btMessage.contains('Belt Disconnected')&&beltState==true) {
-                      state = '턱끈해제';
-                      beltState = false;
-                      //_setAsset('assets/audio/belt0.mp3');
-                      //_setLoopMode(LoopMode.off);
-
-                      logger.warning('Notify beltstate F: ${iuserId}, ${attendees}');
-                      setMyBeltState(iuserId, 1 , 0);
-                    }
-                    else if(btMessage.contains('EM')) {
-                      state = '위급상황';
-                      //_setAsset('assets/audio/alram1.mp3');
-                     // _setLoopMode(LoopMode.one);
-                    }
-                    else if(btMessage.contains('IA')) {
-                      state = '무활동반응';
-                     // _setAsset('assets/audio/alram1.mp3');
-                      //_setLoopMode(LoopMode.one);
-                    }
-                    else if(btMessage.contains('FF')) {
-                      state = '추락사고';
-                     // _setAsset('assets/audio/alram1.mp3');
-                    //  _setLoopMode(LoopMode.one);
-                    }
-                    else if(btMessage.contains('IM')) {
-                      state = '충격사고';
-                     // _setAsset('assets/audio/alram1.mp3');
-                     // _setLoopMode(LoopMode.one);
-                    }
-
-
-                    if(/*_counter==0&& */state!='이상없음'){
-                      //_stopSound();
-                     // _playSound();
-                      addStateToGuestBook(state);
-
-                      if(state!='턱끈연결'&&state!='턱끈해제') {
-                      //  if(_events!=null) {
-                     //     _events?.close();
-                     //   }
-                       // _events = StreamController<int>();
-                      //  _events?.add(60);
-                        //alertD(context, state);
-
-                        /*  if(state=='위급상황') {
-                          alertD(context, state);
-                        }
-                        else {
-                          newAlertD(context, displayName,  geolatitude.toString()+ ', ' +geolongitude.toString(), state);
-                        }*/
-                      }
-                    }
-                    logger.warning('------------- End of listenB('+state+') -------------');
-                  });
-                }
-              }
-            }
-          }
-        });
-      }
-    });
-    logger.warning('end');
-  }
-
 
   Future<bool> disconnectUnintentionalDevice() async {
+
+    _event4Scan= StreamController<int>();
+
+    subIsScanning = FlutterBlue.instance.isScanning.listen((isscanning)  {
+      //logger.shout('_isScanning: ${isscanning}');
+      if(isscanning==false&&isBluetoothScanning==true){
+        _event4Scan?.add(2); //jay  'isScanning'은 StartScan 이후에 listen 등록해도 false가 먼저 1회 오고 start가 즉시오게됨, 단순히 false만 봐서는 scan이 끝났는지 알수없음(초기값이 오류를 발생)
+      }
+      isBluetoothScanning =isscanning;
+    });
+
+    subEventScanning = _event4Scan!.stream.listen((event4Scan) {
+      logger.shout('_event4Scan: ${event4Scan}');
+      if(event4Scan==1||event4Scan==2) {
+        subIsScanning?.cancel();
+        subEventScanning!.cancel();
+        Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) =>
+                ParingScreen(bTdevice: bTdevice, scanevent:event4Scan),
+            ));
+      }
+    });
+
     List<BluetoothDevice> connectedDevices = await flutterBlue.connectedDevices;
 
-    logger.severe('disconectUnintentionalDevice');
+    logger.severe('-- BT init : disconectUnintentionalDevice');
     if(connectedDevices.isNotEmpty) {
       if (connectedDevices[0].name.contains('Smart Helmet')) {
         bTdevice=connectedDevices[0];
-        logger.warning('find Smart helmet');
-        await connectedDevices[0].connect();
-        //await connectMyProtocol(connectedDevices[0]);
-        return true;
+        logger.warning('found Smart helmet');
+        deviceName = bTdevice!.name;
+        await bTdevice!.disconnect();
+        logger.warning('bTdevice!.disconnect()');
+        //await bTdevice!.connect();
+        //await connectMyProtocol(bTdevice);
+        //return true;
       }
       //디스커넥트 되고 실제 반영될려면..
     }
-    await FlutterBlue.instance.startScan(timeout: const Duration(seconds:2));
-    FlutterBlue.instance.scanResults.listen((snapshot) async {
+    await FlutterBlue.instance.startScan(timeout: const Duration(seconds:8));
+    subScanResult = FlutterBlue.instance.scanResults.listen((snapshot) async {
       for (ScanResult r in snapshot) {
         logger.shout('${r.device.name} found! rssi: ${r.rssi}');
         if (r.device.name.contains('Smart Helmet')) {
+
+          subScanResult!.cancel();
+
+          _event4Scan?.add(1);
           bTdevice=r.device;
           //FlutterBlue.instance.stopScan(); 그냥 scan을 await으로 처리함
           await r.device.connect();
-          //connectMyProtocol(r.device);
+
+          //await connectMyProtocol(r.device);
           break;
         }
       }
     });
+
+
     return false;
   }
 
   @override
   void initState() {
     super.initState();
-
     logger.shout('SplashScreen Init');
      disconnectUnintentionalDevice();
 
-    Timer(const Duration(seconds:4), () => Navigator.push(context,
-      MaterialPageRoute(builder: (context) =>
-        ChangeNotifierProvider(
-            create: (context) => ApplicationState(),
-            builder: (context, _) => HomePage(),//App2(), //
-          ),
-      ),
-    ));
   }
 
   @override
@@ -220,23 +123,43 @@ class _SplashScreenState extends State<SplashScreen> {
                  fit: BoxFit.fitWidth,
               ),
               heightSpace,
-              Text(
+              /*Text(
                 '스마트안전모',
                 style: listItemTitleStyle,
+              ),*/
+              //heightSpace,
+              heightSpace,
+              const Text('등록된 스마트안전모를 찾는 중...',
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.bold,
+                  )
+                //listItemTitleStyle,
               ),
               heightSpace,
               heightSpace,
+              const SpinKitPulse(
+                color: Colors.deepPurple,//primaryColor,
+                size: 70.0,
+              ),
+              /*
               StreamBuilder<bool>(
                 stream: FlutterBlue.instance.isScanning,
                 initialData: false,
                 builder: (c, snapshot) {
                   if (snapshot.data!) {
                     return  Column(
-                      children: [
-                        Text(
-                          '장치 찾는 중...',
-                          style: listItemTitleStyle,
+                      children:  [
+                        const Text('등록된 안전모를 찾는 중...',
+                            style: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 18.0,
+                            )
+                          //listItemTitleStyle,
                         ),
+                        heightSpace,
+                        heightSpace,
                         const SpinKitPulse(
                           color: Colors.deepPurple,//primaryColor,
                           size: 50.0,
@@ -244,13 +167,12 @@ class _SplashScreenState extends State<SplashScreen> {
                       ],
                     );
                   } else {
-                    return FloatingActionButton(
-                        child: Icon(Icons.search),
-                        onPressed: () => FlutterBlue.instance
-                            .startScan(timeout: Duration(seconds: 4)));
+                    return Container();/*MaterialApp(
+                        home: ParingScreen(bTdevice: bTdevice),
+                    );*/
                   }
                 },
-              ),
+              ),*/
             ],
           ),
         ),
