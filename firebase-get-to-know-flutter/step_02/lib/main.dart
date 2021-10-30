@@ -76,7 +76,8 @@ StreamController<int>? event4Connect;
 int counterA = 0;
 bool isDissconnectbyMenu =false;
 
-ValueNotifier<double>? batteryPercent;
+//ValueNotifier<double>? batteryPercent;
+StreamController<double>? batteryPercent;
 
 Timer? _timer_bat;
 Timer? _timer_beltinit;
@@ -373,14 +374,14 @@ void alertD(BuildContext context, String State) async {
                     onPressed:() {
                       _counter=0; //todo jay 커넥트마이프로토콜 안에 어떻게 동기화할지..;
                       _timer?.cancel();
-                      _stopSound();
+                      stopSound();
                       Navigator.of(context, rootNavigator: true).pop(false);//true로 앞에 있으면 닫아지고 뒤에 있으면 닫아지지 않음
                       if(State=='위급상황') {
                         logger.warning('위급상황 해제');
-                        _stopSound();
-                        _setLoopMode(LoopMode.off);
-                        _setAsset('assets/audio/relEvent.mp3');
-                        _playSound();
+                        stopSound();
+                        setLoopMode(LoopMode.off);
+                        setAsset('assets/audio/relEvent.mp3');
+                        playSound();
                         addStateToGuestBook('상황해제');
                         addNewPopupU('상황해제', 60);
                       }
@@ -448,8 +449,6 @@ void alertD(BuildContext context, String State) async {
 
 Future<void> connectMyProtocol(BluetoothDevice? device) async {
 
-  batteryPercent = ValueNotifier<double>(0);
-
   //Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   //final SharedPreferences prefs = await _prefs;
 
@@ -512,6 +511,7 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
                       adcBatt = 2300;
                     //setState(() {
                     //batteryPercent!.value=(((adcBatt-2300)/(3006-2300))*100);
+                    batteryPercent?.add(((adcBatt-2300)/(3006-2300))*100);
                     //});
 
                   }
@@ -597,7 +597,7 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
           _timer?.cancel();
           if(isDissconnectbyMenu ==false&&isDialogAlive==true) {
             isDialogAlive=false;
-            // todo jay 1028 Navigator.of(context, rootNavigator: true).pop(false);
+            Navigator.of(navigatorKey.currentContext!, rootNavigator: true).pop(false);
           }
           isDissconnectbyMenu=false;
         }
@@ -610,10 +610,12 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
         _timer_beltinit?.cancel();
         _timer_beltinit = Timer.periodic(const Duration(milliseconds: 250), (timer) {
           logger.warning('req belt => current beltstate:'+ beltState.toString());
-          if(writecharacteristic!=null &&beltState==false) {
-            writecharacteristic.write(utf8.encode('belt status'));
+	  //jay 1030일 벨트스테이트 문제 수정
+          if(beltState==false) {
+            if(writecharacteristic!=null ) {
+              writecharacteristic.write(utf8.encode('belt status'));
+            }
           }
-
           else{
             _timer_beltinit?.cancel();
           }
@@ -1530,6 +1532,10 @@ void callbackDispatcher() {
 }
 
 void main() {
+
+  batteryPercent= StreamController<double>();
+  //batteryPercent = ValueNotifier<double>(0);
+
 /*
   //jay for dart/flutter engine running on background
   Workmanager().initialize(
@@ -3160,10 +3166,10 @@ class ApplicationState extends ChangeNotifier {
                       /*
                       if (uid!=user.uid &&thisTime.timestamp.add(Duration(minutes: 5)).isAfter(
                           DateTime.now())) {
-                        //_stopSound();
-                        //_setAsset('assets/audio/alram1.mp3');
-                        //_setLoopMode(LoopMode.one);
-                        //_playSound();
+                        //stopSound();
+                        //setAsset('assets/audio/alram1.mp3');
+                        //setLoopMode(LoopMode.one);
+                        //playSound();
                         addNPopupManager(
                             thisTime.name, formattedDate + formattedTime,
                             '연결복귀',location ,300);
@@ -5531,7 +5537,8 @@ class _HomePageState extends State<HomePage> {
                                 builder: (context) =>
                                     FindDevicesScreen())).then((value) =>
                             setState(() {})); //_startscan();
-                        batteryPercent!.value =0;
+                        //batteryPercent!.value =0;
+                        batteryPercent?.add(0);
                         text = ' 연결하기';
                         break;
                       default:
@@ -5548,6 +5555,31 @@ class _HomePageState extends State<HomePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               const Icon(Icons.battery_std, color: Colors.white),
+                            StreamBuilder<double>(
+                              stream: batteryPercent?.stream,
+                              initialData: 0,
+                              builder: (c, snapshot) {
+                                if(snapshot.hasData) {
+                                  return Text(
+                                    '${snapshot.data!.round().toString()}% ',
+                                    style: Theme.of(context)
+                                        .primaryTextTheme
+                                        .button
+                                        ?.copyWith(color: Colors.white,fontSize: 18),
+                                  );
+                                } else {
+                                  return Text(
+                                    '0% ',
+                                    style: Theme.of(context)
+                                        .primaryTextTheme
+                                        .button
+                                        ?.copyWith(color: Colors.white,fontSize: 18),
+                                  );
+                                }
+
+                                },
+                            ),
+                            /*
                               ValueListenableBuilder(
                                 valueListenable: batteryPercent!, // 사용할 변수를 지정. _counter가 변경 되면 자동 호출
                                 builder: (context, double value, Widget? wdiget) {
@@ -5559,7 +5591,7 @@ class _HomePageState extends State<HomePage> {
                                         ?.copyWith(color: Colors.white,fontSize: 18),
                                   );
                                 },
-                              ),
+                              ),*/
 
                               (text == ' 연결끊기')
                                   ? const Icon(Icons.bluetooth_connected_rounded, color: Colors.white)

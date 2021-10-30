@@ -25,6 +25,8 @@ StreamSubscription? subIsScanning;
 StreamSubscription? subEventScanning;
 StreamSubscription? subScanResult;
 
+
+
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -35,8 +37,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<bool> disconnectUnintentionalDevice() async {
 
-    _event4Scan= StreamController<int>();
-
+    List<BluetoothDevice> connectedDevices = await flutterBlue.connectedDevices;
     subIsScanning = FlutterBlue.instance.isScanning.listen((isscanning)  {
       //logger.shout('_isScanning: ${isscanning}');
       if(isscanning==false&&isBluetoothScanning==true){
@@ -58,7 +59,6 @@ class _SplashScreenState extends State<SplashScreen> {
       }
     });
 
-    List<BluetoothDevice> connectedDevices = await flutterBlue.connectedDevices;
 
     logger.severe('-- BT init : disconectUnintentionalDevice');
     if(connectedDevices.isNotEmpty) {
@@ -100,8 +100,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+
+    _event4Scan= StreamController<int>();
+
     logger.shout('SplashScreen Init');
-     disconnectUnintentionalDevice();
+    disconnectUnintentionalDevice();
 
   }
 
