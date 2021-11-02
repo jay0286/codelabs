@@ -107,6 +107,7 @@ class Authentication extends StatelessWidget {
       case ApplicationLoginState.loggedIn:
         return Row(
           children: [
+            /*
             Padding(
               padding: const EdgeInsets.only(left: 24, bottom: 8),
               child: StyledButton(
@@ -127,6 +128,8 @@ class Authentication extends StatelessWidget {
                 child: const Text('로그아웃'),
               ),
             ),
+
+             */
           ],
         );
       default:

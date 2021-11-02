@@ -163,9 +163,11 @@ class _SplashScreenState extends State<SplashScreen> {
         padding: EdgeInsets.all(fixPadding),
         child: Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
+
+              const SizedBox(height: 100,),
               Image.asset(
                 'assets/image/helmet.png',
                  width: 100.0,
@@ -192,6 +194,32 @@ class _SplashScreenState extends State<SplashScreen> {
                 color: Colors.deepPurple,//primaryColor,
                 size: 70.0,
               ),
+              const SizedBox(height: 100,),
+              TextButton(
+                  onPressed:(){
+                    subIsScanning?.cancel();
+                    subEventScanning?.cancel();
+                    subScanResult?.cancel();
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) =>
+                            ChangeNotifierProvider(
+                              create: (context) => ApplicationState(),
+                              builder: (context, _) => HomePage(bTdevice: bTdevice, scanevent: 2),//App2(), //
+                            ),
+                        ));
+                  },
+                  child: const Text('바로 로그인하기',
+                      style: TextStyle(
+                        color: Colors.black38,
+                        fontSize: 16.0,
+                      ),
+                  ),
+              ),
+              heightSpace,
+              heightSpace,
+              heightSpace,
+              heightSpace,
               /*
               StreamBuilder<bool>(
                 stream: FlutterBlue.instance.isScanning,

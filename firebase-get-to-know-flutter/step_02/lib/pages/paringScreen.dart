@@ -18,6 +18,7 @@ import '../main.dart';
 
 import './splashScreen.dart';
 
+Timer? subParingRetry;
 
 StreamSubscription? subEventConnecting;
 class ParingScreen extends StatefulWidget {
@@ -80,7 +81,7 @@ class _ParingScreenState extends State<ParingScreen> {
         padding: EdgeInsets.all(fixPadding),
         child: Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               (widget.scanevent ==1)?
@@ -124,56 +125,112 @@ class _ParingScreenState extends State<ParingScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                   ),
-                  const Text('안전모의 상태를 확인해 주세요',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 15.0,
-                        fontWeight: FontWeight.bold,
-                      )
-                  ),
+
                   heightSpace,
                   heightSpace,
                   heightSpace,
                   Row(
                     mainAxisAlignment:MainAxisAlignment.spaceEvenly ,
                     children: [
-                      FloatingActionButton.extended(
-                        heroTag: "btn1",
-                        onPressed: () =>Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) =>
-                                SplashScreen(),
-                            )),
-                        /*icon: const Icon(Icons.search,
-                            //color: Colors.deepPurple,
-                        ),*/
-                        label: const Text("내안전모 다시찾기",
-                            style: TextStyle(
-                              //color: Colors.deepPurple,
-                              fontSize: 15.0,
-                              fontWeight: FontWeight.bold,
-                            )
-                        ),
-                        backgroundColor: Colors.deepPurple,
-                        hoverColor: Colors.black54,
-                        splashColor: Colors.black54,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          FloatingActionButton.extended(
+                            heroTag: "btn1",
+                            onPressed: () {
+                              subParingRetry?.cancel();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) =>
+                                    SplashScreen(),
+                                ));},
+                            /*icon: const Icon(Icons.search,
+                                //color: Colors.deepPurple,
+                            ),*/
+                            label: const Text("내안전모 다시찾기",
+                                style: TextStyle(
+                                  //color: Colors.deepPurple,
+                                  fontSize: 15.0,
+                                  fontWeight: FontWeight.bold,
+                                )
+                            ),
+                            backgroundColor: Colors.deepPurple,
+                            hoverColor: Colors.black54,
+                            splashColor: Colors.black54,
 
+                          ),
+                          heightSpace,
+                          const Text("10초 후 자동 재시도",
+                              style: TextStyle(
+                                color: Colors.deepPurple,
+                                fontSize: 15.0,
+                                fontWeight: FontWeight.bold,
+                              )
+                          ),
+                        ],
                       ),
-                      FloatingActionButton.extended(
-                        heroTag: "btn2",
-                        onPressed: () {
-                          //subEventScanning!.cancel();
-                          //subIsScanning!.cancel();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) =>
-                                FindDevicesScreen(),
-                            ));},
-                        //icon: const Icon(Icons.add_link),
-                        label: const Text("새안전모 등록하기"),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          FloatingActionButton.extended(
+                            heroTag: "btn2",
+                            onPressed: () {
+                              //subEventScanning!.cancel();
+                              //subIsScanning!.cancel();
+
+                              subParingRetry?.cancel();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) =>
+                                    FindDevicesScreen(callerId:2),
+                                ));},
+                            //icon: const Icon(Icons.add_link),
+                            label: const Text("새안전모 등록하기"),
+                          ),
+                          heightSpace,
+                          const Text("dummy",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15.0,
+                                fontWeight: FontWeight.bold,
+                              )
+                          ),
+                        ],
                       ),
                     ],
                   ),
+                  SizedBox(height: 100,),
+                  heightSpace,
+                  heightSpace,
+                  heightSpace,
+                  heightSpace,
+                  heightSpace,
+                  heightSpace,
+                  TextButton(
+                    onPressed:(){
+                      subParingRetry?.cancel();
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) =>
+                              ChangeNotifierProvider(
+                                create: (context) => ApplicationState(),
+                                builder: (context, _) => HomePage(bTdevice: bTdevice, scanevent: 2),//App2(), //
+                              ),
+                          ));
+                    },
+                    child: const Text('바로 로그인하기',
+                      style: TextStyle(
+                        color: Colors.black38,
+                        fontSize: 17.0,
+                      ),
+                    ),
+                  ),
+                  heightSpace,
+                  heightSpace,
+                  heightSpace,
+                  heightSpace,
                 ],
               ):Column(
                 children: const [
@@ -184,6 +241,14 @@ class _ParingScreenState extends State<ParingScreen> {
                       )
                     //listItemTitleStyle,
                   ),
+                  SizedBox(height: 100,),
+                  const Text('바로 로그인하기',
+                    style: TextStyle(
+                      color: Colors.black38,
+                      fontSize: 16.0,
+                    ),
+                  ),
+
                 ],
               ),
               /*
