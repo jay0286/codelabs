@@ -55,8 +55,18 @@ class _ParingScreenState extends State<ParingScreen> {
       }
     });
 
-    if(widget.scanevent ==1) {
+    if(widget.scanevent ==1) { //등록된 장치가 있어 자동 페어링 되도록.(connect는 splash해서 진행된 후)
       connectMyProtocol(widget.bTdevice);
+    }
+    else
+    if(widget.scanevent ==2) { //등록된 자치가 없어 10초 단위로 계속 검색함
+      subParingRetry =Timer(
+          const Duration(seconds: 10), () =>
+          Navigator.push(context,
+            MaterialPageRoute(builder: (context) =>
+                SplashScreen(),
+            ),
+          ));
     }
   }
 

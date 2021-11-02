@@ -1028,7 +1028,7 @@ class _FindDevicesScreenState extends State<FindDevicesScreen> {
                       result: r,
                       onTap: () async {
                         logger.warning('its work: ${logState}');
-                        if(logState==true) {
+                        //if(logState==true) {
                           Future<SharedPreferences> _prefs =  SharedPreferences.getInstance();
                           final SharedPreferences prefs = await _prefs;
                           bTdevice = r.device;
@@ -1043,13 +1043,13 @@ class _FindDevicesScreenState extends State<FindDevicesScreen> {
                                   ParingScreen(bTdevice: bTdevice, scanevent:1),
                               ));
 
-                        } else {
+                        /*} else {
                           Fluttertoast.showToast(
                             msg: '로그인 후 안전모 연결이 가능합니다',
                             backgroundColor: Colors.black,
                             textColor: whiteColor,
                           );
-                        }
+                        }*/
 
                         },
                           /*Navigator.of(context)
