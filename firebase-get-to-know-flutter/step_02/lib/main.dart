@@ -40,9 +40,6 @@ import 'widgets.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import './pages/paringScreen.dart';
-
-
 
 final logger = SimpleLogger();
 
@@ -1459,12 +1456,21 @@ void setMyHelmetBtState(String uid, bool HelmetBtState ) {
 
 
 
+void updateMyLastLogin(String uid, GeoPoint location ) {
+  logger.warning('setMyLocation:${location}, lastaccess: ${DateTime.now()})');
+  final userDoc =  FirebaseFirestore.instance
+      .collection('user')
+      .doc(uid);
+  userDoc.update({'geopoint': location,'lastaccess':DateTime.now().millisecondsSinceEpoch});
+}
+
+
 void setMyLocation(String uid, GeoPoint location, bool pBeltState, int helmetElaspedTime, DateTime? lastWokDay, int attendees ) {
   logger.warning('setMyLocation:${location}, beltstate: ${pBeltState} (${helmetElaspedTime})');
   final userDoc =  FirebaseFirestore.instance
       .collection('user')
       .doc(uid);
-  userDoc.update({'geopoint': location, 'belt': pBeltState, 'helmettime': helmetElaspedTime, 'lastworkday': /*timeToWorkStart 1020 jay */ lastWokDay!.millisecondsSinceEpoch, 'beltcount': attendees});
+  userDoc.update({'geopoint': location, 'belt': pBeltState, 'helmettime': helmetElaspedTime, 'lastworkday': /*timeToWorkStart 1020 jay */ lastWokDay!.millisecondsSinceEpoch, 'beltcount': attendees,'lastaccess':DateTime.now().millisecondsSinceEpoch});
   //beltState
 }
 
@@ -1478,7 +1484,7 @@ Future<void> setMyBeltState(String uid, int pBeltState, int beltCount) async {
       .collection('user')
       .doc(uid);
   if(pBeltState==3) {
-    userDoc.update({'beltState': pBeltState, 'beltcount': beltCount});
+    userDoc.update({'beltState': pBeltState, 'beltcount': beltCount,'lastaccess':DateTime.now().millisecondsSinceEpoch});
     if(_stopWatchTimer.isRunning!=true) {
       int debugprint = await _stopWatchTimer.rawTime.first;
       logger.warning('_stopWatchTimer start ('+debugprint.toString()+')');
@@ -1487,7 +1493,7 @@ Future<void> setMyBeltState(String uid, int pBeltState, int beltCount) async {
     }
   }
   else  {
-    userDoc.update({'beltState': pBeltState});
+    userDoc.update({'beltState': pBeltState,'lastaccess':DateTime.now().millisecondsSinceEpoch});
     if(_stopWatchTimer.isRunning==true) {
       helmetElaspedTime = await _stopWatchTimer.rawTime.first;
       logger.warning('_stopWatchTimer stop (${helmetElaspedTime})');
@@ -1846,7 +1852,7 @@ class _WorkerListState extends State<WorkerList> {
                                   width: ScreenUtil().setWidth(45),
                                   color:(item.belt==1)?Colors.red.withOpacity(0.85)  : (item.belt==2) ?Colors.amber.shade500 :  Colors.deepPurple,
                                   alignment: Alignment.center,
-                                  child: Text((item.belt==1)?'미착용':(item.belt==2)?'연결해제':'착용중',
+                                  child: Text((item.lastaccess!.millisecondsSinceEpoch!=0&&item.lastaccess!.isBefore(DateTime.now().subtract(const Duration(minutes: 2))))?'연결유실':(item.belt==1)?'미착용':(item.belt==2)?'연결해제':'착용중',
                                       style:  TextStyle(
                                         color: (item.belt==2)?Colors.black87:Colors.white,
                                         fontSize: (item.belt==2)?ScreenUtil().setSp(12.5):ScreenUtil().setSp(13),
@@ -2159,6 +2165,7 @@ class WorkerListMessage {
     this.location,
     required this.accident,
     required this.lastworkday,
+    required this.lastaccess,
   });
   final bool helmetBtState;
   final String name;
@@ -2171,6 +2178,7 @@ class WorkerListMessage {
   final GeoPoint? location;
   final int accident;
   final DateTime? lastworkday;
+  final DateTime? lastaccess;
 }
 
 class AccidentMessage {
@@ -2782,14 +2790,15 @@ class ApplicationState extends ChangeNotifier {
         //print(timeToWorkStart);
         logState = true;
         _loginState = ApplicationLoginState.loggedIn;
-
+        updateMyLastLogin(iuserId, GeoPoint(geolatitude,geolongitude));
+        //setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime,lastWokDay, attendees);
         listenWhoAmI?.cancel();
         listenWhoAmI=FirebaseFirestore.instance
             .collection('user')
             .where('uid',isEqualTo:iuserId)
             .snapshots()
             .listen
-            /*.get().then*/((value) async {
+            /*.get().then*/((value) async { // 내 유저 데이터 업데이트
               displayName = (value.docs[0].data()['name']==null)? '무명':value.docs[0].data()['name'];
               attendees = (value.docs[0].data()['beltcount']==null)? 0:value.docs[0].data()['beltcount'];
               lastWokDay = DateTime.fromMillisecondsSinceEpoch((value.docs[0].data()['lastworkday']==null)?0:value.docs[0].data()['lastworkday']);
@@ -2797,6 +2806,9 @@ class ApplicationState extends ChangeNotifier {
               workZone = (value.docs[0].data()['workzone']==null)?'테스트 작업지구':value.docs[0].data()['workzone'];
               role = (value.docs[0].data()['role']==null)?'worker':value.docs[0].data()['role'];
               //lastWokDay =DateTime.fromMillisecondsSinceEpoch(0);
+              //lastaccess 내 라스트 엑세스는 아직 필요 없어서 읽지 않음 jay 1101
+
+
               logger.warning('name: ${displayName}');
               logger.warning('phone: ${user.phoneNumber}');
               logger.warning('read attendees : ${attendees}');
@@ -2930,10 +2942,10 @@ class ApplicationState extends ChangeNotifier {
                         location: document.data()['geopoint'],
                         accident: (document.data()['beltcount']==null)?0:document.data()['beltcount'],
                         lastworkday:getLastWorkDayDateTime ,
+                        lastaccess: DateTime.fromMillisecondsSinceEpoch((document.data()['lastaccess']==null)?0:document.data()['lastaccess']),
                       ),
                     );
                     logger.warning('name:${document.data()['name']}, ${document.data()['beltState']}');
-
                   });
                   _workerLogMessages.sort((b,a) => a.lastworkday!.compareTo(b.lastworkday!)); //1020 jay 날짜순 정렬 추가
                   _workerLogMessages.sort((a,b) => a.belt.compareTo(b.belt));
