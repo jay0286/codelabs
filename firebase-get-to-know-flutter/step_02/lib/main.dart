@@ -1854,7 +1854,7 @@ class _WorkerListState extends State<WorkerList> {
                                   alignment: Alignment.center,
                                   child: Text((item.lastaccess!.millisecondsSinceEpoch!=0&&item.lastaccess!.isBefore(DateTime.now().subtract(const Duration(minutes: 2))))?'앱 OFF':'앱 ON',
                                       style:  TextStyle(
-                                        color: (item.belt==2)?Colors.black87:Colors.white,
+                                        color: Colors.white,
                                         fontSize: (item.belt==2)?ScreenUtil().setSp(12.5):ScreenUtil().setSp(13),
                                       )
                                   ),
