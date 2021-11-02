@@ -87,7 +87,7 @@ class _SplashScreenState extends State<SplashScreen> {
       else if (event4Scan == 3) { //기 등록된 장치가 없을 때
         subIsScanning?.cancel();
         subEventScanning!.cancel();
-        subScanResult!.cancel();
+        //subScanResult!.cancel();
         Navigator.push(
             context,
             MaterialPageRoute(builder: (context) =>
