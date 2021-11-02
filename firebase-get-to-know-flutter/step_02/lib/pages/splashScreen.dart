@@ -18,6 +18,7 @@ import './paringScreen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:workmanager/workmanager.dart';
 
 bool isBluetoothScanning = false;
 StreamController<int>? _event4Scan;
@@ -60,17 +61,33 @@ class _SplashScreenState extends State<SplashScreen> {
     await loadDevice();
     subEventScanning = _event4Scan!.stream.listen((event4Scan) {
       logger.shout('_event4Scan: ${event4Scan}');
-      if (event4Scan == 1 || event4Scan == 2) {
+      if (event4Scan == 1) { //등록된 장치를 찾았을 때
         subIsScanning?.cancel();
         subEventScanning!.cancel();
+        subScanResult!.cancel();
+        Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) =>
+                ChangeNotifierProvider(
+                  create: (context) => ApplicationState(),
+                  builder: (context, _) => HomePage(bTdevice: bTdevice, scanevent: event4Scan),//App2(), //
+                ),
+            ));
+      }
+      else if (event4Scan == 2) { // 등록된 장치가 검색되지 않을때
+        subIsScanning?.cancel();
+        subEventScanning!.cancel();
+        subScanResult!.cancel();
         Navigator.push(
             context,
             MaterialPageRoute(builder: (context) =>
                 ParingScreen(bTdevice: bTdevice, scanevent: event4Scan),
             ));
       }
-      else if (event4Scan == 3) {
+      else if (event4Scan == 3) { //기 등록된 장치가 없을 때
+        subIsScanning?.cancel();
         subEventScanning!.cancel();
+        subScanResult!.cancel();
         Navigator.push(
             context,
             MaterialPageRoute(builder: (context) =>
@@ -91,8 +108,7 @@ class _SplashScreenState extends State<SplashScreen> {
       subIsScanning = FlutterBlue.instance.isScanning.listen((isscanning) {
         //logger.shout('_isScanning: ${isscanning}');
         if (isscanning == false && isBluetoothScanning == true) {
-          _event4Scan?.add(
-              2); //jay  'isScanning'은 StartScan 이후에 listen 등록해도 false가 먼저 1회 오고 start가 즉시오게됨, 단순히 false만 봐서는 scan이 끝났는지 알수없음(초기값이 오류를 발생)
+          _event4Scan?.add(2); //jay  'isScanning'은 StartScan 이후에 listen 등록해도 false가 먼저 1회 오고 start가 즉시오게됨, 단순히 false만 봐서는 scan이 끝났는지 알수없음(초기값이 오류를 발생)
         }
         isBluetoothScanning = isscanning;
       });

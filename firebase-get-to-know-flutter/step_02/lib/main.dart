@@ -476,7 +476,7 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
               {
                 logger.severe('keep writecharacteristic');
                 writecharacteristic = c;
-                event4Connect!.add(1); //todo jay 확인하자 여기가 적절할지
+                //event4Connect!.add(1); //todo jay 확인하자 여기가 적절할지
               }
 
               if(c.descriptors.isNotEmpty) {
@@ -956,6 +956,8 @@ DateTime? timeToWorkStart ;
 
 DateTime? lastWokDay ;
 class FindDevicesScreen extends StatefulWidget {
+  int? callerId;
+  FindDevicesScreen({Key? key, @required this.callerId }) : super(key: key);
 
   @override
   _FindDevicesScreenState createState() => _FindDevicesScreenState();
@@ -982,7 +984,7 @@ class _FindDevicesScreenState extends State<FindDevicesScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: <Widget>[
-              StreamBuilder<List<BluetoothDevice>>(
+              /*StreamBuilder<List<BluetoothDevice>>(
                 stream: Stream.periodic(const Duration(seconds: 2))
                     .asyncMap((_) async => FlutterBlue.instance.connectedDevices),
                 initialData: [],
@@ -1017,7 +1019,7 @@ class _FindDevicesScreenState extends State<FindDevicesScreen> {
                   )
                       .toList(),
                 ),
-              ),
+              ),*/
               StreamBuilder<List<ScanResult>>(
                 stream: FlutterBlue.instance.scanResults,
                 // ignore: prefer_const_literals_to_create_immutables
@@ -1028,7 +1030,7 @@ class _FindDevicesScreenState extends State<FindDevicesScreen> {
                       result: r,
                       onTap: () async {
                         logger.warning('its work: ${logState}');
-                        //if(logState==true) {
+
                           Future<SharedPreferences> _prefs =  SharedPreferences.getInstance();
                           final SharedPreferences prefs = await _prefs;
                           bTdevice = r.device;
@@ -1036,28 +1038,46 @@ class _FindDevicesScreenState extends State<FindDevicesScreen> {
                           prefs.setString('lasthelmet', bTdevice!.name);
                           logger.shout('Set My Helmet name: '+ prefs.getString('lasthelmet')!);
 
-                          // 1028 Navigator.pop(context, false);
+                          if(widget.callerId ==1) {
+                            Navigator.pop(context, false);
+                          } else if(widget.callerId ==2) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) =>
+                                    ChangeNotifierProvider(
+                                      create: (context) => ApplicationState(),
+                                      builder: (context, _) => HomePage(bTdevice: bTdevice, scanevent: 1),
+                                    ),
+                                ));
+                        }
+
+                        /*
+                          Fluttertoast.showToast(
+                            msg: '작업시작 후 안전모를 연결해 주세요',
+                            backgroundColor: Colors.deepPurple,
+                            textColor: Colors.white,
+                            gravity :ToastGravity.CENTER,
+                          );
+                          */
+                       /*
                           Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) =>
-                                  ParingScreen(bTdevice: bTdevice, scanevent:1),
+                                  ChangeNotifierProvider(
+                                    create: (context) => ApplicationState(),
+                                    builder: (context, _) => HomePage(),//App2(), //
+                                  ),
                               ));
 
-                        /*} else {
-                          Fluttertoast.showToast(
-                            msg: '로그인 후 안전모 연결이 가능합니다',
-                            backgroundColor: Colors.black,
-                            textColor: whiteColor,
-                          );
-                        }*/
-
-                        },
-                          /*Navigator.of(context)
+*/
+                          /*
+                          Navigator.of(context)
                           .push(MaterialPageRoute(builder: (context) {
                         r.device.connect();
                         return DeviceScreen(device: r.device);
                       })),*/
 
+                      },
                     ):Container(),
                   )
                       .toList(),
@@ -1534,16 +1554,12 @@ final navigatorKey = GlobalKey<NavigatorState>();
 //jay for dart/flutter engine running on background
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) {
-    print("Native called background task"); //simpleTask will be emitted here.
+    logger.warning("Native called background task"); //simpleTask will be emitted here.
     return Future.value(true);
   });
 }
 
 void main() {
-
-  batteryPercent= StreamController<double>.broadcast(); //jay broadcast로 하지 않으면 새로 빌드 될때 새로 스트림 수신이 생기며 에러가 발생함.
-  //batteryPercent = ValueNotifier<double>(0);
-
 /*
   //jay for dart/flutter engine running on background
   Workmanager().initialize(
@@ -1552,17 +1568,16 @@ void main() {
   );
 
   //jay for dart/flutter engine running on background
-  Workmanager().registerOneOffTask(
-    "1",
-    "simpleTask",
-    inputData: <String, dynamic>{
-      'int': 1,
-      'bool': true,
-      'double': 1.0,
-      'string': 'string',
-      'array': [1, 2, 3],
-    },); //Android only (see below)
+  Workmanager().registerPeriodicTask(
+    "3",
+    "simplePeriodicTask",
+    initialDelay: Duration(seconds: 10),
+  );
 */
+
+  batteryPercent= StreamController<double>.broadcast(); //jay broadcast로 하지 않으면 새로 빌드 될때 새로 스트림 수신이 생기며 에러가 발생함.
+  //batteryPercent = ValueNotifier<double>(0);
+
   initializeDateFormatting('ko_kr', null);
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations(
@@ -5374,7 +5389,11 @@ StreamController<int>? _events;
 StreamController<int>? _eventsA;
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  BluetoothDevice? bTdevice;
+  int? scanevent;
+
+  HomePage({Key? key, @required this.bTdevice, this.scanevent }) : super(key: key);
+
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -5446,6 +5465,9 @@ class _HomePageState extends State<HomePage> {
 
     logger.shout('Homepage Init');
     //disconectUnintentionalDevice();
+    if(widget.scanevent ==1) {
+      connectMyProtocol(widget.bTdevice);
+    }
 /*
     Geolocator.getCurrentPosition().then((value) =>
     {
@@ -5559,7 +5581,7 @@ class _HomePageState extends State<HomePage> {
                             Navigator.of(context).push(
                                 MaterialPageRoute(
                                     builder: (context) =>
-                                        FindDevicesScreen())).then((value) =>
+                                        FindDevicesScreen(callerId:1))).then((value) =>
                                 setState(() {})); //_startscan();
                           } else {
                             Fluttertoast.showToast(
@@ -5573,7 +5595,7 @@ class _HomePageState extends State<HomePage> {
                       default:
                         _onPressed = () =>
                             Navigator.of(context).push(MaterialPageRoute( builder: (context) =>
-                                FindDevicesScreen())).then((value) => setState(() {}));
+                                FindDevicesScreen(callerId:1))).then((value) => setState(() {}));
                         text = snapshot.data.toString().substring(21).toUpperCase();
                         break;
                     }
