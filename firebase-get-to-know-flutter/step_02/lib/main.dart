@@ -1766,10 +1766,10 @@ class _WorkerListState extends State<WorkerList> {
                     subtitle:  Text(item.phone,
                         style:  TextStyle (
                           //color: Colors.black,
-                          fontSize: ScreenUtil().setSp(12),
+                          fontSize: ScreenUtil().setSp(11.1),
                         )),
                     trailing: Container(
-                      width: ScreenUtil().setWidth(142),
+                      width: ScreenUtil().setWidth(186),
                       height: ScreenUtil().setHeight(48),
                       alignment: Alignment.centerRight,
                       margin:  EdgeInsets.only(left:fixPadding * 0.5,right:fixPadding * 0),
@@ -1822,13 +1822,13 @@ class _WorkerListState extends State<WorkerList> {
                                 borderRadius: BorderRadius.circular(3.0), //or 15.0
                                 child: Container(
                                   height: ScreenUtil().setHeight(20),
-                                  width: ScreenUtil().setWidth(45),
+                                  width: ScreenUtil().setWidth(44),
                                   color: Colors.deepPurple,
                                   alignment: Alignment.center,
                                   child:  Text(StopWatchTimer.getDisplayTime(item.worktime!, second:false,milliSecond:false ) ,
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: ScreenUtil().setSp(14),
+                                        fontSize: ScreenUtil().setSp(13.5),
                                       )
                                   ),
                                 ),
@@ -1849,10 +1849,37 @@ class _WorkerListState extends State<WorkerList> {
                                   ),
                                 ) : */ Container(
                                   height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(44),
+                                  color:((item.lastaccess!.millisecondsSinceEpoch!=0&&item.lastaccess!.isBefore(DateTime.now().subtract(const Duration(minutes: 2)))))?Colors.red.withOpacity(0.85)  :  Colors.deepPurple,
+                                  alignment: Alignment.center,
+                                  child: Text((item.lastaccess!.millisecondsSinceEpoch!=0&&item.lastaccess!.isBefore(DateTime.now().subtract(const Duration(minutes: 2))))?'앱 OFF':'앱 ON',
+                                      style:  TextStyle(
+                                        color: (item.belt==2)?Colors.black87:Colors.white,
+                                        fontSize: (item.belt==2)?ScreenUtil().setSp(12.5):ScreenUtil().setSp(13),
+                                      )
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 1.5),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0), //or 15.0
+                                child:/*(item.belt==1) ? Container(
+                                  height: ScreenUtil().setHeight(20),
                                   width: ScreenUtil().setWidth(45),
+                                  color: Colors.amber.shade500,//.withOpacity(0.85),
+                                  alignment: Alignment.center,
+                                  child: Text('연결해제',
+                                      style:  TextStyle(
+                                        color: Colors.black87,
+                                        fontSize:  ScreenUtil().setSp(12.5),
+                                      )
+                                  ),
+                                ) : */ Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(44),
                                   color:(item.belt==1)?Colors.red.withOpacity(0.85)  : (item.belt==2) ?Colors.amber.shade500 :  Colors.deepPurple,
                                   alignment: Alignment.center,
-                                  child: Text((item.lastaccess!.millisecondsSinceEpoch!=0&&item.lastaccess!.isBefore(DateTime.now().subtract(const Duration(minutes: 2))))?'연결유실':(item.belt==1)?'미착용':(item.belt==2)?'연결해제':'착용중',
+                                  child: Text((item.belt==1)?'미착용':(item.belt==2)?'연결해제':'착용중',
                                       style:  TextStyle(
                                         color: (item.belt==2)?Colors.black87:Colors.white,
                                         fontSize: (item.belt==2)?ScreenUtil().setSp(12.5):ScreenUtil().setSp(13),
@@ -1865,13 +1892,13 @@ class _WorkerListState extends State<WorkerList> {
                                 borderRadius: BorderRadius.circular(3.0), //or 15.0
                                 child: Container(
                                   height: ScreenUtil().setHeight(20),
-                                  width: ScreenUtil().setWidth(45),
+                                  width: ScreenUtil().setWidth(44),
                                   color: Colors.deepPurple,
                                   alignment: Alignment.center,
                                   child: Text(item.accident.toString(),
                                       style:  TextStyle(
                                         color: Colors.white,
-                                        fontSize: ScreenUtil().setSp(14),
+                                        fontSize: ScreenUtil().setSp(13),
                                       )
                                   ),
                                 ),
@@ -1923,7 +1950,7 @@ class _WorkerListState extends State<WorkerList> {
                           fontSize: ScreenUtil().setSp(10),
                         )),
                     trailing: Container(
-                      width: ScreenUtil().setWidth(142),
+                      width: ScreenUtil().setWidth(186),
                       height: ScreenUtil().setHeight(48),
                       alignment: Alignment.centerRight,
                       margin:  EdgeInsets.only(left:fixPadding * 0.5,right:fixPadding * 0),
@@ -1976,13 +2003,40 @@ class _WorkerListState extends State<WorkerList> {
                                 borderRadius: BorderRadius.circular(3.0), //or 15.0
                                 child: Container(
                                   height: ScreenUtil().setHeight(20),
-                                  width: ScreenUtil().setWidth(45),
+                                  width: ScreenUtil().setWidth(44),
                                   color: Colors.grey,
                                   alignment: Alignment.center,
                                   child:  Text('00:00',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: ScreenUtil().setSp(14),
+                                        fontSize: ScreenUtil().setSp(13),
+                                      )
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 1.5),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0), //or 15.0
+                                child:/*(item.belt==1) ? Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(45),
+                                  color: Colors.amber.shade500,//.withOpacity(0.85),
+                                  alignment: Alignment.center,
+                                  child: Text('연결해제',
+                                      style:  TextStyle(
+                                        color: Colors.black87,
+                                        fontSize:  ScreenUtil().setSp(12.5),
+                                      )
+                                  ),
+                                ) : */ Container(
+                                  height: ScreenUtil().setHeight(20),
+                                  width: ScreenUtil().setWidth(44),
+                                  color:Colors.grey,
+                                  alignment: Alignment.center,
+                                  child: Text('앱 OFF',
+                                      style:  TextStyle(
+                                        color:  Colors.white,
+                                        fontSize: ScreenUtil().setSp(13),
                                       )
                                   ),
                                 ),
@@ -1992,13 +2046,13 @@ class _WorkerListState extends State<WorkerList> {
                                 borderRadius: BorderRadius.circular(3.0), //or 15.0
                                 child: Container(
                                   height: ScreenUtil().setHeight(20),
-                                  width: ScreenUtil().setWidth(45),
+                                  width: ScreenUtil().setWidth(44),
                                   color: Colors.grey,
                                   alignment: Alignment.center,
                                   child: Text('미착용',
                                       style:  TextStyle(
                                         color: Colors.white,
-                                        fontSize:  ScreenUtil().setSp(12.5),
+                                        fontSize:  ScreenUtil().setSp(13),
                                       )
                                   ),
                                 ),
@@ -2008,13 +2062,13 @@ class _WorkerListState extends State<WorkerList> {
                                 borderRadius: BorderRadius.circular(3.0), //or 15.0
                                 child: Container(
                                   height: ScreenUtil().setHeight(20),
-                                  width: ScreenUtil().setWidth(45),
+                                  width: ScreenUtil().setWidth(44),
                                   color: Colors.grey,
                                   alignment: Alignment.center,
                                   child: Text('0',
                                       style:  TextStyle(
                                         color: Colors.white,
-                                        fontSize: ScreenUtil().setSp(14),
+                                        fontSize: ScreenUtil().setSp(13),
                                       )
                                   ),
                                 ),
