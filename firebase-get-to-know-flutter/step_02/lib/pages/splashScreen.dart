@@ -18,11 +18,12 @@ import './paringScreen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:workmanager/workmanager.dart';
 
 bool isBluetoothScanning = false;
-StreamController<int>? _event4Scan;
+StreamController<int>? event4Scan ;
 
+
+StreamSubscription? subIsBtState;
 StreamSubscription? subIsScanning;
 StreamSubscription? subEventScanning;
 StreamSubscription? subScanResult;
@@ -54,17 +55,21 @@ class _SplashScreenState extends State<SplashScreen> {
     //return true;
   }
 
+  bool btStateChange=false;
 
-  Future<bool> disconnectUnintentionalDevice() async {
+  Future<bool> disconnectUnintentionalDevice(int stateOffset) async {
 
     logger.severe('-- BT init : disconectUnintentionalDevice');
+
     await loadDevice();
-    subEventScanning = _event4Scan!.stream.listen((event4Scan) {
-      logger.shout('_event4Scan: ${event4Scan}');
+    await subEventScanning?.cancel();
+
+    subEventScanning = event4Scan!.stream.listen((event4Scan) async {
+      logger.shout('event4Scan: ${event4Scan}');
       if (event4Scan == 1) { //등록된 장치를 찾았을 때
-        subIsScanning?.cancel();
-        subEventScanning!.cancel();
-        subScanResult!.cancel();
+        await subIsScanning?.cancel();
+        await subEventScanning?.cancel();
+        await subScanResult?.cancel();
         Navigator.push(
             context,
             MaterialPageRoute(builder: (context) =>
@@ -75,9 +80,9 @@ class _SplashScreenState extends State<SplashScreen> {
             ));
       }
       else if (event4Scan == 2) { // 등록된 장치가 검색되지 않을때
-        subIsScanning?.cancel();
-        subEventScanning!.cancel();
-        subScanResult!.cancel();
+        await subIsScanning?.cancel();
+        await subEventScanning!.cancel();
+        await subScanResult!.cancel();
         Navigator.push(
             context,
             MaterialPageRoute(builder: (context) =>
@@ -85,8 +90,8 @@ class _SplashScreenState extends State<SplashScreen> {
             ));
       }
       else if (event4Scan == 3) { //기 등록된 장치가 없을 때
-        subIsScanning?.cancel();
-        subEventScanning!.cancel();
+        await subIsScanning?.cancel();
+        await subEventScanning!.cancel();
         //subScanResult!.cancel();
         Navigator.push(
             context,
@@ -97,10 +102,26 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
             ));
       }
+      else if (event4Scan == 1+10 /*10 is stateOffset */) { //등록된 장치를 찾았을 때
+        await subIsScanning?.cancel();
+        await subEventScanning!.cancel();
+        await subScanResult!.cancel();
+        await connectMyProtocol(bTdevice!);
+      }
+      else if (event4Scan == 2+10 /*10 is stateOffset */) { // 등록된 장치가 검색되지 않을때
+        Future.delayed(const Duration(seconds: 8), () {
+           FlutterBlue.instance.startScan(timeout: const Duration(seconds: 4));
+        });
+
+      }
+      else if (event4Scan == 3+10 /*10 is stateOffset */) { //기 등록된 장치가 없을 때 //없는 상황
+        await subIsScanning?.cancel();
+        await subEventScanning!.cancel();
+      }
     });
 
     if(myLastHelmet==null/*||logState==false 파이어 스토어 동작 이전이라 사용불가*/) {
-      _event4Scan?.add(3);
+      event4Scan?.add(3+stateOffset);
       return true;
     }
     else {
@@ -108,7 +129,7 @@ class _SplashScreenState extends State<SplashScreen> {
       subIsScanning = FlutterBlue.instance.isScanning.listen((isscanning) {
         //logger.shout('_isScanning: ${isscanning}');
         if (isscanning == false && isBluetoothScanning == true) {
-          _event4Scan?.add(2); //jay  'isScanning'은 StartScan 이후에 listen 등록해도 false가 먼저 1회 오고 start가 즉시오게됨, 단순히 false만 봐서는 scan이 끝났는지 알수없음(초기값이 오류를 발생)
+          event4Scan?.add(2+stateOffset); //jay  'isScanning'은 StartScan 이후에 listen 등록해도 false가 먼저 1회 오고 start가 즉시오게됨, 단순히 false만 봐서는 scan이 끝났는지 알수없음(초기값이 오류를 발생)
         }
         isBluetoothScanning = isscanning;
       });
@@ -128,9 +149,9 @@ class _SplashScreenState extends State<SplashScreen> {
         for (ScanResult r in snapshot) {
           logger.shout('${r.device.name} found! rssi: ${r.rssi}');
           if (r.device.name.contains(myLastHelmet!)) {
-            subScanResult!.cancel();
+            await subScanResult!.cancel();
 
-            _event4Scan?.add(1);
+            event4Scan?.add(1+stateOffset);
             bTdevice = r.device;
             //FlutterBlue.instance.stopScan(); 그냥 scan을 await으로 처리함
             await r.device.connect();
@@ -150,8 +171,18 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     logger.shout('SplashScreen Init');
 
-    _event4Scan= StreamController<int>();
-    disconnectUnintentionalDevice();
+    //subIsBtState?.cancel();
+    subIsBtState = FlutterBlue.instance.state.listen((btState) async {
+      logger.shout('BtState: ${btState}');
+      if(btState==BluetoothState.off&&btStateChange ==false){
+        btStateChange =true;
+      } else if(btState==BluetoothState.on &&btStateChange ==true) {
+        await disconnectUnintentionalDevice(10);
+        btStateChange =false;
+      }
+    });
+    //event4Scan = StreamController<int>();
+    disconnectUnintentionalDevice(0);
   }
 
   @override

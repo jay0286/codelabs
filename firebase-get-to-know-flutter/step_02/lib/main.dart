@@ -70,7 +70,6 @@ BluetoothDeviceState? btState =BluetoothDeviceState.disconnected; //jay :아직 
 StreamController<int>? event4Connect;
 
 
-int counterA = 0;
 bool isDissconnectbyMenu =false;
 
 //ValueNotifier<double>? batteryPercent;
@@ -581,7 +580,7 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
         logger.warning('-------- Bt Paringg connected ---------');
         if(isBluetoothDisconnectOnBeltConnected) {
           stopSound();
-          if(counterA==0) { //todo 커넥트가 들어올 때 0인경우가 거진 없으니..
+          if(_counterA==0) { //todo 커넥트가 들어올 때 0인경우가 거진 없으니..
             addStateToGuestBook('연결복귀');
             // todo 1029 살펴보자 원래 막혀있 1019 jay BT Noti에서 어짜피 붙여주니까. 그대로 두면 턱끈없이 BT연결되도 BT set 됨. setMyBeltState(iuserId,3, attendees); //전원이랑 턱끈이랑 연결되엉있어 BT가 연결되면 턲끈이 있다 봐도 무방함
           }
@@ -1036,6 +1035,7 @@ class _FindDevicesScreenState extends State<FindDevicesScreen> {
                           logger.shout('Set My Helmet name: '+ prefs.getString('lasthelmet')!);
 
                           if(widget.callerId ==1) {
+                            connectMyProtocol(bTdevice);
                             Navigator.pop(context, false);
                           } else if(widget.callerId ==2) {
                             Navigator.push(
@@ -1580,7 +1580,7 @@ void main() {
     initialDelay: Duration(seconds: 10),
   );
 */
-
+  event4Scan = StreamController<int>.broadcast();
   batteryPercent= StreamController<double>.broadcast(); //jay broadcast로 하지 않으면 새로 빌드 될때 새로 스트림 수신이 생기며 에러가 발생함.
   //batteryPercent = ValueNotifier<double>(0);
 
