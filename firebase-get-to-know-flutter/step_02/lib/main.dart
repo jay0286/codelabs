@@ -39,6 +39,8 @@ import 'src/widgets.dart';
 import 'widgets.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
+//import 'package:wakelock/wakelock.dart';
+import 'package:is_lock_screen/is_lock_screen.dart';
 
 
 final logger = SimpleLogger();
@@ -487,14 +489,14 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
                   if(btMessage.contains('BAT')){
                     int adcBatt = int.parse(btMessage.substring(btMessage.lastIndexOf(",")+1));
 
-                    if(adcBatt>2100) {
+                   // if(adcBatt>2000||Low Battery) {
                       _timer_bat?.cancel();
                       _timer_bat = Timer.periodic(const Duration(seconds: 60), (timer) {
                         if(writecharacteristic!=null &&beltState==false) {
                           writecharacteristic.write(utf8.encode('req bat'));
                         }
                       });
-                    }
+                   // }
 
                     if(adcBatt>3006)
                       adcBatt = 3006;
@@ -505,7 +507,14 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
                     batteryPercent?.add(((adcBatt-2300)/(3006-2300))*100);
                     //});
 
+                  }/*else if(btMessage.contains('Low Battery')){
+                    _timer_bat?.cancel();
+                    _timer_bat = Timer.periodic(const Duration(seconds: 60), (timer) {
+                      if(writecharacteristic!=null &&beltState==false) {
+                        writecharacteristic.write(utf8.encode('req bat'));
                   }
+                    });
+                  }*/
                   else if((btMessage.contains('Belt Connected')||btMessage.toString().contains('Belt Alive'))&&beltState==false) {
                     state = '턱끈연결';
                     beltState = true;
@@ -636,7 +645,16 @@ Future<void> connectMyProtocol(BluetoothDevice? device) async {
             _setLoopMode(LoopMode.one);
             _playSound();
           */
+          if(lifecycle == AppLifecycleState.paused){
+            setAsset('assets/audio/alram beeps.mp3');
+            setLoopMode(LoopMode.one);
+            playSound();
+            setMyBeltState(iuserId,2,0);
+            addStateToGuestBook("연결해제");
+            addNewPopupU("연결해제", -1);
+          }else {
           addNewPopupU("연결해제", 15);
+          }
           //setMyBeltState(iuserId,2, 0);
         }
         beltState = false; //1019: add by jay bt noty가 안오므로 여기서 false해줘야함
@@ -2937,7 +2955,7 @@ class ApplicationState extends ChangeNotifier {
                   helmetElaspedTime = 0;
                 }
                 setMyLocation(iuserId, GeoPoint(geolatitude,geolongitude), beltState, helmetElaspedTime,lastWokDay, attendees);
-                addlogToGuestBook('1mlog');
+                //addlogToGuestBook('1mlog');
 
                 /*
                 Geolocator.getCurrentPosition().then((value) async  {
@@ -5454,6 +5472,8 @@ int _counterA = 0; //new alertA
 StreamController<int>? _events;
 StreamController<int>? _eventsA;
 
+AppLifecycleState? lifecycle;
+
 class HomePage extends StatefulWidget {
   BluetoothDevice? bTdevice;
   int? scanevent;
@@ -5465,7 +5485,7 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
 
   bool onWillPop() {
@@ -5513,6 +5533,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance!.addObserver(this);
+
     player = AudioPlayer();
     //ble instance 생성
     flutterBlue = FlutterBlue.instance;
@@ -5560,6 +5582,33 @@ class _HomePageState extends State<HomePage> {
 */
   }
 
+  @mustCallSuper
+  @override
+  void dispose() {
+    WidgetsBinding.instance!.removeObserver(this);
+
+    logger.shout('---------- dispose');
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state)async {
+      super.didChangeAppLifecycleState(state);
+        print('app ${state}, is lock screen: ${ await isLockScreen()}');
+
+      lifecycle = state;
+    logger.shout('---------- ${state.toString()}');
+    if (state == AppLifecycleState.resumed) {
+      //doWhatWhenAppResumed();
+    } else if (state == AppLifecycleState.inactive) {
+      //doWhatWhenAppInactive();
+    } else if (state == AppLifecycleState.paused) {
+      //doWhatWhenAppPaused();
+    } else if (state == AppLifecycleState.detached) {
+      //doWhatWhenAppSuspending();
+    }
+  }
+
 
   //FlutterBlueApp
   //double batteryPercent=0;
@@ -5576,6 +5625,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     logger.shout('Homepage build');
+    //Wakelock.enable();
    return WillPopScope(
       onWillPop: () async {
         bool backStatus = onWillPop();
